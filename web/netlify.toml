@@ -10,7 +10,10 @@
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
 
-# Headers for Security and PWA Caching
+[build.processing]
+  skip_processing = true
+
+# Headers for Security, PWA and Disabling Netlify feedback drawer / badge
 [[headers]]
   for = "/manifest.json"
   [headers.values]

@@ -51,3 +51,18 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
+/* Ensure no third-party or Netlify feedback drawer / badge widgets ever appear */
+iframe[src*="netlify"],
+[data-netlify-deploy-id],
+.netlify-drawer-container,
+#netlify-drawer-container,
+div[class*="netlify-feedback"],
+div[id*="netlify-drawer"],
+div[class*="netlify-badge"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+

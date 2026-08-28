@@ -2,12 +2,14 @@
 
 import React from 'react';
 import { useFiles } from '../context/FileContext';
+import { useAuth } from '../context/AuthContext';
 import { SyncStatusBadge } from './SyncStatusBadge';
-import { Search, Plus, HardDrive, X } from 'lucide-react';
+import { Search, Plus, HardDrive, X, Lock } from 'lucide-react';
 import Link from 'next/link';
 
 export function Navbar() {
   const { searchQuery, setSearchQuery, setIsUploadModalOpen } = useFiles();
+  const { lockApp } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 w-full bg-black/85 backdrop-blur-xl border-b border-zinc-800/80 transition-colors">
@@ -58,7 +60,15 @@ export function Navbar() {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-zinc-200 text-black shadow-md active:scale-95 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Subir archivo</span>
+            <span className="hidden sm:inline">Subir</span>
+          </button>
+
+          <button
+            onClick={lockApp}
+            title="Bloquear aplicación"
+            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white active:scale-95 transition-all cursor-pointer"
+          >
+            <Lock className="w-4 h-4" />
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext';
 import { FileItem, FileType, StorageStats, SyncState } from '../lib/types';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import {
@@ -40,6 +41,7 @@ interface FileContextType {
 const FileContext = createContext<FileContextType | undefined>(undefined);
 
 export function FileProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<FileType | 'all'>('all');
@@ -52,8 +54,14 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
   const [lastSyncTime, setLastSyncTime] = useState<string>(new Date().toISOString());
   const [isSupabaseLive, setIsSupabaseLive] = useState(false);
 
-  // Load real files from Supabase
+  // Load real files from Supabase only if authenticated
   const loadFiles = useCallback(async () => {
+    if (!isAuthenticated) {
+      setFiles([]);
+      setIsLoading(false);
+      return;
+    }
+
     if (isSupabaseConfigured) {
       try {
         setIsSyncing(true);
@@ -71,17 +79,21 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       setFiles([]);
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     // Clear legacy mock cache from localStorage
     localStorage.removeItem('misarchivos_files');
-    loadFiles();
-  }, [loadFiles]);
+    if (isAuthenticated) {
+      loadFiles();
+    } else {
+      setFiles([]);
+    }
+  }, [isAuthenticated, loadFiles]);
 
   // Realtime subscription to database changes
   useEffect(() => {
-    if (isSupabaseConfigured && supabase) {
+    if (isAuthenticated && isSupabaseConfigured && supabase) {
       const channel = supabase
         .channel('realtime-files-sync')
         .on(
@@ -97,7 +109,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
         supabase?.removeChannel(channel);
       };
     }
-  }, [loadFiles]);
+  }, [isAuthenticated, loadFiles]);
 
   // Calculate storage stats from real files only
   const activeFiles = files.filter((f) => !f.isTrash);

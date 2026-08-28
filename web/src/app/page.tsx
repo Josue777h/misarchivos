@@ -105,7 +105,7 @@ export default function HomePage() {
       {/* Hero Action Bar - Pure OLED Dark 1-Click Actions */}
       <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10">
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs font-bold text-zinc-300 tracking-wide uppercase">
@@ -117,15 +117,8 @@ export default function HomePage() {
             </span>
           </div>
 
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            Tus Archivos a la Palma de la Mano
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-xl">
-            Sube fotos, documentos y PDFs con 1 clic. Todo se sincroniza instantáneamente con tu PC.
-          </p>
-
           {/* 1-Click Action Buttons */}
-          <div className="grid grid-cols-3 gap-2.5 sm:flex sm:items-center sm:gap-3 mt-4 pt-1">
+          <div className="grid grid-cols-3 gap-2.5 sm:flex sm:items-center sm:gap-3">
             <button
               onClick={() => cameraInputRef.current?.click()}
               className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 rounded-2xl bg-white text-black font-bold text-xs sm:text-sm shadow-md hover:bg-zinc-200 active:scale-95 transition-all text-center"
