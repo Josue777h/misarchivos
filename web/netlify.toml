@@ -1,21 +1,13 @@
 # Netlify Configuration for MisArchivos (Web folder)
 [build]
-  publish = ".next"
   command = "npm run build"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
-  NPM_FLAGS = "--legacy-peer-deps"
   NETLIFY_FEEDBACK_DRAWER = "false"
   NETLIFY_DRAWER_ENABLED = "false"
 
-[build.processing]
-  skip_processing = true
-
-# Headers for Security, PWA and Disabling Netlify feedback drawer / badge
 [[headers]]
   for = "/manifest.json"
   [headers.values]
