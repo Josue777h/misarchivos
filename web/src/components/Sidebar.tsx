@@ -1,12 +1,7 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import {
   Home,
   Folder,
-  Layers,
   Trash2,
   Settings,
   HardDrive,
@@ -17,16 +12,19 @@ import {
 import { useFiles } from '../context/FileContext';
 import { formatFileSize } from '../lib/file-helpers';
 
-export function Sidebar() {
-  const pathname = usePathname();
+interface SidebarProps {
+  activeView: 'home' | 'files' | 'trash' | 'settings';
+  onNavigate: (view: 'home' | 'files' | 'trash' | 'settings') => void;
+}
+
+export function Sidebar({ activeView, onNavigate }: SidebarProps) {
   const { stats } = useFiles();
 
-  const navItems = [
-    { href: '/', label: 'Inicio', icon: Home },
-    { href: '/files', label: 'Todos los Archivos', icon: Folder, count: stats.totalFiles },
-    { href: '/categories', label: 'Categorías', icon: Layers },
-    { href: '/trash', label: 'Papelera', icon: Trash2, count: stats.trashCount },
-    { href: '/settings', label: 'Cuenta y Ajustes', icon: Settings },
+  const navItems: { id: 'home' | 'files' | 'trash' | 'settings'; label: string; icon: any; count?: number }[] = [
+    { id: 'home', label: 'Inicio', icon: Home },
+    { id: 'files', label: 'Todos los Archivos', icon: Folder, count: stats.totalFiles },
+    { id: 'trash', label: 'Papelera', icon: Trash2, count: stats.trashCount },
+    { id: 'settings', label: 'Cuenta y Ajustes', icon: Settings },
   ];
 
   return (
@@ -35,13 +33,13 @@ export function Sidebar() {
       <nav className="space-y-1.5 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = activeView === item.id;
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all ${
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 isActive
                   ? 'bg-zinc-900 text-white border border-zinc-700/80 shadow-xs'
                   : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-white'
@@ -62,7 +60,7 @@ export function Sidebar() {
                   {item.count}
                 </span>
               )}
-            </Link>
+            </button>
           );
         })}
       </nav>

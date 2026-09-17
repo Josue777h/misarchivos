@@ -1,24 +1,24 @@
-'use client';
-
-import React from 'react';
-import { useFiles } from '../../context/FileContext';
-import { useAuth } from '../../context/AuthContext';
-import { formatFileSize } from '../../lib/file-helpers';
+import React, { useState } from 'react';
+import { useFiles } from '../context/FileContext';
+import { useAuth } from '../context/AuthContext';
+import { formatFileSize } from '../lib/file-helpers';
 import {
   User,
   LogOut,
   HardDrive,
-  Database,
   RefreshCw,
   Trash2,
   Folder,
 } from 'lucide-react';
-import Link from 'next/link';
 
-export default function SettingsPage() {
+interface SettingsViewProps {
+  onNavigate: (view: 'home' | 'files' | 'trash' | 'settings') => void;
+}
+
+export function SettingsView({ onNavigate }: SettingsViewProps) {
   const { stats, triggerManualSync } = useFiles();
   const { user, signOut } = useAuth();
-  const [syncing, setSyncing] = React.useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -95,20 +95,20 @@ export default function SettingsPage() {
 
       {/* Quick shortcuts */}
       <div className="grid grid-cols-2 gap-3 pt-1">
-        <Link
-          href="/files"
-          className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 flex items-center gap-2.5 text-xs font-semibold text-zinc-300 hover:text-white transition-all"
+        <button
+          onClick={() => onNavigate('files')}
+          className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 flex items-center gap-2.5 text-xs font-semibold text-zinc-300 hover:text-white transition-all text-left cursor-pointer"
         >
-          <Folder className="w-4 h-4 text-zinc-400" />
-          <span>Ver todos los archivos ({stats.totalFiles})</span>
-        </Link>
-        <Link
-          href="/trash"
-          className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 flex items-center gap-2.5 text-xs font-semibold text-zinc-300 hover:text-white transition-all"
+          <Folder className="w-4 h-4 text-zinc-400 shrink-0" />
+          <span>Ver archivos ({stats.totalFiles})</span>
+        </button>
+        <button
+          onClick={() => onNavigate('trash')}
+          className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 flex items-center gap-2.5 text-xs font-semibold text-zinc-300 hover:text-white transition-all text-left cursor-pointer"
         >
-          <Trash2 className="w-4 h-4 text-zinc-400" />
+          <Trash2 className="w-4 h-4 text-zinc-400 shrink-0" />
           <span>Papelera ({stats.trashCount})</span>
-        </Link>
+        </button>
       </div>
     </div>
   );

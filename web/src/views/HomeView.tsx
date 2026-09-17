@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useRef, useState, useMemo } from 'react';
 import { useFiles } from '../context/FileContext';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +14,11 @@ import {
   Folder,
 } from 'lucide-react';
 
-export default function HomePage() {
+interface HomeViewProps {
+  onNavigate: (view: 'home' | 'files' | 'trash' | 'settings', category?: FileType | 'all') => void;
+}
+
+export function HomeView({ onNavigate }: HomeViewProps) {
   const {
     files,
     viewMode,

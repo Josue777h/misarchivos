@@ -1,13 +1,14 @@
-'use client';
-
 import React from 'react';
 import { useFiles } from '../context/FileContext';
 import { useAuth } from '../context/AuthContext';
 import { SyncStatusBadge } from './SyncStatusBadge';
 import { Search, Plus, HardDrive, X, LogOut, User as UserIcon } from 'lucide-react';
-import Link from 'next/link';
 
-export function Navbar() {
+interface NavbarProps {
+  onNavigate: (view: 'home' | 'files' | 'trash' | 'settings') => void;
+}
+
+export function Navbar({ onNavigate }: NavbarProps) {
   const { searchQuery, setSearchQuery, setIsUploadModalOpen } = useFiles();
   const { user, signOut } = useAuth();
 
@@ -15,7 +16,10 @@ export function Navbar() {
     <header className="sticky top-0 z-30 w-full bg-black/85 backdrop-blur-xl border-b border-zinc-800/80 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 sm:gap-4">
         {/* Brand / Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+        <button
+          onClick={() => onNavigate('home')}
+          className="flex items-center gap-2.5 shrink-0 group text-left cursor-pointer"
+        >
           <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-700/60 flex items-center justify-center text-white shadow-md group-hover:border-zinc-500 transition-all">
             <HardDrive className="w-5 h-5 text-white" />
           </div>
@@ -24,7 +28,7 @@ export function Navbar() {
               Mis<span className="text-zinc-400">Archivos</span>
             </span>
           </div>
-        </Link>
+        </button>
 
         {/* Search Bar */}
         <div className="flex-1 max-w-md mx-1 sm:mx-4">
@@ -40,7 +44,7 @@ export function Navbar() {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -65,14 +69,14 @@ export function Navbar() {
           {/* User Account / Logout */}
           <div className="flex items-center gap-1.5 pl-1 border-l border-zinc-800/80">
             {user?.email && (
-              <Link
-                href="/settings"
+              <button
+                onClick={() => onNavigate('settings')}
                 title={`Conectado como ${user.email}`}
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors max-w-[140px]"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors max-w-[140px] cursor-pointer"
               >
                 <UserIcon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <span className="truncate">{user.email.split('@')[0]}</span>
-              </Link>
+              </button>
             )}
 
             <button

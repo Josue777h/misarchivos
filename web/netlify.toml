@@ -1,7 +1,7 @@
 # Netlify Configuration for MisArchivos (Web folder)
 [build]
   command = "npm run build"
-  publish = "out"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
