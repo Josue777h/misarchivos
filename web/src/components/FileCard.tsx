@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FileItem } from '../lib/types';
-import { formatFileSize, formatDate, downloadBlobOrUrl } from '../lib/file-helpers';
+import { formatFileSize, formatDate, downloadBlobOrUrl, isImageFile } from '../lib/file-helpers';
 import { FileIconBadge } from './FileIconBadge';
 import { FileActionsMenu } from './FileActionsMenu';
 import { useFiles } from '../context/FileContext';
@@ -15,6 +15,9 @@ interface Props {
 export function FileCard({ file }: Props) {
   const { setPreviewFile, moveToTrash } = useFiles();
   const [imageError, setImageError] = useState(false);
+
+  const isImage = file.type === 'image' || isImageFile(file.name, file.mimeType);
+  const imageSource = !imageError && isImage ? file.thumbnailUrl || file.downloadUrl : undefined;
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -36,13 +39,14 @@ export function FileCard({ file }: Props) {
       className="group relative bg-zinc-900/90 rounded-2xl border border-zinc-800 hover:border-zinc-600 shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between active:scale-[0.99]"
     >
       {/* Thumbnail or File Type Area */}
-      <div className="relative w-full h-36 bg-black flex items-center justify-center overflow-hidden">
-        {file.type === 'image' && file.thumbnailUrl && !imageError ? (
+      <div className="relative w-full h-40 bg-zinc-950 flex items-center justify-center overflow-hidden">
+        {imageSource ? (
           <img
-            src={file.thumbnailUrl}
+            src={imageSource}
             alt={file.name}
             onError={() => setImageError(true)}
             loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (

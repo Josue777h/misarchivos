@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { FileItem, FileType, SyncState } from './types';
-import { getFileTypeFromExtension, sanitizeStorageKey } from './file-helpers';
+import { getFileTypeFromExtension, isImageFile, sanitizeStorageKey } from './file-helpers';
 
 // Helper to compute SHA-256 hash in browser
 export async function calculateSHA256(file: File | Blob): Promise<string> {
@@ -45,12 +45,14 @@ export async function fetchFilesFromSupabase(userId?: string): Promise<FileItem[
         publicUrl = urlData?.publicUrl || '';
       }
 
+      const isImg = row.file_type === 'image' || isImageFile(row.name, row.mime_type);
+
       return {
         id: row.id,
         userId: row.user_id,
         name: row.name,
         relativePath: row.relative_path,
-        type: row.file_type as FileType,
+        type: (isImg ? 'image' : row.file_type) as FileType,
         extension: row.extension,
         size: Number(row.size_bytes),
         mimeType: row.mime_type,
@@ -60,7 +62,7 @@ export async function fetchFilesFromSupabase(userId?: string): Promise<FileItem[
         syncStatus: row.sync_status as SyncState,
         isTrash: Boolean(row.is_trash),
         deletedAt: row.deleted_at,
-        thumbnailUrl: row.file_type === 'image' ? publicUrl : undefined,
+        thumbnailUrl: isImg ? publicUrl : undefined,
         downloadUrl: publicUrl || undefined,
         conflictInfo: row.conflict_info || undefined,
       };
@@ -81,6 +83,7 @@ export async function uploadFileToSupabase(
   try {
     const hash = await calculateSHA256(file);
     const { type, extension } = getFileTypeFromExtension(file.name);
+    const isImg = type === 'image' || isImageFile(file.name, file.type);
     const cleanPath = relativePath || file.name;
     const cleanKey = sanitizeStorageKey(cleanPath);
     const storagePath = userId ? `${userId}/${cleanKey}` : cleanKey;
@@ -90,7 +93,7 @@ export async function uploadFileToSupabase(
       .from('misarchivos')
       .upload(storagePath, file, {
         upsert: true,
-        contentType: file.type || 'application/octet-stream',
+        contentType: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
       });
 
     if (storageError) {
@@ -112,10 +115,10 @@ export async function uploadFileToSupabase(
     const payload: any = {
       name: file.name,
       relative_path: cleanPath,
-      file_type: type,
+      file_type: isImg ? 'image' : type,
       extension,
       size_bytes: file.size,
-      mime_type: file.type || 'application/octet-stream',
+      mime_type: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
       hash_sha256: hash,
       storage_path: storagePath,
       sync_status: 'synced',
@@ -159,16 +162,16 @@ export async function uploadFileToSupabase(
       userId: record?.user_id || userId,
       name: file.name,
       relativePath: cleanPath,
-      type,
+      type: (isImg ? 'image' : type) as FileType,
       extension,
       size: file.size,
-      mimeType: file.type || 'application/octet-stream',
+      mimeType: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
       createdAt: record?.created_at || new Date().toISOString(),
       updatedAt: record?.updated_at || new Date().toISOString(),
       hash,
       syncStatus: 'synced',
       isTrash: false,
-      thumbnailUrl: type === 'image' ? urlData?.publicUrl : undefined,
+      thumbnailUrl: isImg ? urlData?.publicUrl : undefined,
       downloadUrl: urlData?.publicUrl || undefined,
     };
   } catch (err) {

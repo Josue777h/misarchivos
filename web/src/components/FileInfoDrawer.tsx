@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useFiles } from '../context/FileContext';
-import { formatFileSize, formatDate, safeCopyText } from '../lib/file-helpers';
+import { formatFileSize, formatDate, safeCopyText, isImageFile } from '../lib/file-helpers';
 import { FileIconBadge } from './FileIconBadge';
 import { X, Copy, Check, Hash, Calendar, HardDrive, FolderTree, ShieldCheck, AlertTriangle } from 'lucide-react';
 
@@ -10,8 +10,12 @@ export function FileInfoDrawer() {
   const { infoFile, setInfoFile } = useFiles();
   const [copiedHash, setCopiedHash] = useState(false);
   const [copiedPath, setCopiedPath] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   if (!infoFile) return null;
+
+  const isImage = infoFile.type === 'image' || isImageFile(infoFile.name, infoFile.mimeType);
+  const imageSource = !imageError && isImage ? infoFile.thumbnailUrl || infoFile.downloadUrl : undefined;
 
   const copyToClipboard = async (text: string, type: 'hash' | 'path') => {
     const success = await safeCopyText(text);
@@ -49,7 +53,18 @@ export function FileInfoDrawer() {
         <div className="p-5 overflow-y-auto space-y-4 flex-1">
           {/* Main identity */}
           <div className="flex items-center gap-4 p-3.5 bg-zinc-900 rounded-2xl border border-zinc-800">
-            <FileIconBadge type={infoFile.type} className="w-12 h-12 shrink-0" iconClassName="w-6 h-6" />
+            {imageSource ? (
+              <div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center">
+                <img
+                  src={imageSource}
+                  alt={infoFile.name}
+                  onError={() => setImageError(true)}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <FileIconBadge type={infoFile.type} className="w-12 h-12 shrink-0" iconClassName="w-6 h-6" />
+            )}
             <div className="min-w-0 flex-1">
               <h4 className="font-bold text-sm text-white truncate" title={infoFile.name}>
                 {infoFile.name}

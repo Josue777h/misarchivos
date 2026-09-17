@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { FileItem } from '../lib/types';
-import { formatFileSize, formatDate, downloadBlobOrUrl } from '../lib/file-helpers';
+import { formatFileSize, formatDate, downloadBlobOrUrl, isImageFile } from '../lib/file-helpers';
 import { FileIconBadge } from './FileIconBadge';
 import { FileActionsMenu } from './FileActionsMenu';
 import { useFiles } from '../context/FileContext';
@@ -14,6 +14,10 @@ interface Props {
 
 export function FileListItem({ file }: Props) {
   const { setPreviewFile, moveToTrash } = useFiles();
+  const [imageError, setImageError] = useState(false);
+
+  const isImage = file.type === 'image' || isImageFile(file.name, file.mimeType);
+  const imageSource = !imageError && isImage ? file.thumbnailUrl || file.downloadUrl : undefined;
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -35,11 +39,24 @@ export function FileListItem({ file }: Props) {
       className="group flex items-center justify-between p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-[0.99]"
     >
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
-        <FileIconBadge
-          type={file.type}
-          className="w-11 h-11 shrink-0 shadow-xs"
-          iconClassName="w-5 h-5"
-        />
+        {imageSource ? (
+          <div className="w-11 h-11 shrink-0 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 shadow-xs flex items-center justify-center">
+            <img
+              src={imageSource}
+              alt={file.name}
+              onError={() => setImageError(true)}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+            />
+          </div>
+        ) : (
+          <FileIconBadge
+            type={file.type}
+            className="w-11 h-11 shrink-0 shadow-xs"
+            iconClassName="w-5 h-5"
+          />
+        )}
 
         <div className="min-w-0 flex-1">
           <p

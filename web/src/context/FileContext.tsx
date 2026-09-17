@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useAuth } from './AuthContext';
 import { FileItem, FileType, StorageStats, SyncState } from '../lib/types';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { getFileTypeFromExtension, isImageFile } from '../lib/file-helpers';
 import {
   fetchFilesFromSupabase,
   uploadFileToSupabase,
@@ -12,6 +13,9 @@ import {
   permanentDeleteInSupabase,
   calculateSHA256,
 } from '../lib/supabase-service';
+
+// In-memory cache for instant zero-delay image previews
+const blobUrlCache = new Map<string, string>();
 
 interface FileContextType {
   files: FileItem[];
@@ -66,7 +70,19 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsSyncing(true);
         const remoteFiles = await fetchFilesFromSupabase(user.id);
-        setFiles(remoteFiles || []);
+        const mappedWithCache = (remoteFiles || []).map((f) => {
+          if (f.type === 'image' && !f.thumbnailUrl) {
+            const cached =
+              blobUrlCache.get(f.relativePath) ||
+              blobUrlCache.get(f.name) ||
+              (f.hash ? blobUrlCache.get(f.hash) : undefined);
+            if (cached) {
+              return { ...f, thumbnailUrl: cached, downloadUrl: f.downloadUrl || cached };
+            }
+          }
+          return f;
+        });
+        setFiles(mappedWithCache);
         setIsSupabaseLive(true);
       } catch (err) {
         console.error('Error connecting to Supabase:', err);
@@ -144,21 +160,38 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
   const addUploadedFile = async (file: File, relativePath = '') => {
     const hash = await calculateSHA256(file);
     const cleanRelPath = relativePath || file.name;
+    const { type: detectedType, extension: detectedExt } = getFileTypeFromExtension(file.name);
+    const isImg = detectedType === 'image' || isImageFile(file.name, file.type);
+
+    // Instant local blob preview URL for 0ms visual rendering
+    let localPreviewUrl: string | undefined = undefined;
+    if (isImg) {
+      try {
+        localPreviewUrl = URL.createObjectURL(file);
+        blobUrlCache.set(cleanRelPath, localPreviewUrl);
+        blobUrlCache.set(file.name, localPreviewUrl);
+        if (hash) blobUrlCache.set(hash, localPreviewUrl);
+      } catch (e) {
+        console.warn('Could not create ObjectURL:', e);
+      }
+    }
 
     const tempItem: FileItem = {
       id: 'temp-' + Date.now(),
       userId: user?.id,
       name: file.name,
       relativePath: cleanRelPath,
-      type: 'other',
-      extension: file.name.split('.').pop() || '',
+      type: isImg ? 'image' : detectedType,
+      extension: detectedExt,
       size: file.size,
-      mimeType: file.type || 'application/octet-stream',
+      mimeType: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       hash,
       syncStatus: 'syncing',
       isTrash: false,
+      thumbnailUrl: localPreviewUrl,
+      downloadUrl: localPreviewUrl,
     };
 
     setFiles((prev) => [tempItem, ...prev]);
@@ -167,7 +200,16 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       const result = await uploadFileToSupabase(file, cleanRelPath, user.id);
       if (result) {
         setFiles((prev) =>
-          prev.map((f) => (f.id === tempItem.id ? { ...result, syncStatus: 'synced' } : f))
+          prev.map((f) =>
+            f.id === tempItem.id
+              ? {
+                  ...result,
+                  syncStatus: 'synced',
+                  thumbnailUrl: result.thumbnailUrl || localPreviewUrl,
+                  downloadUrl: result.downloadUrl || localPreviewUrl,
+                }
+              : f
+          )
         );
       } else {
         await loadFiles();

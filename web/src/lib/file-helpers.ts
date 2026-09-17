@@ -1,10 +1,32 @@
 import { FileType, CategoryInfo, FileItem } from './types';
 
+export const IMAGE_EXTENSIONS = [
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+  'svg',
+  'avif',
+  'bmp',
+  'ico',
+  'heic',
+  'jfif',
+  'tiff',
+];
+
+export function isImageFile(filename: string, mimeType?: string): boolean {
+  if (mimeType && mimeType.toLowerCase().startsWith('image/')) return true;
+  const parts = (filename || '').split('.');
+  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
+  return IMAGE_EXTENSIONS.includes(ext);
+}
+
 export function getFileTypeFromExtension(filename: string): { type: FileType; extension: string } {
-  const parts = filename.split('.');
+  const parts = (filename || '').split('.');
   const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
 
-  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext)) {
+  if (IMAGE_EXTENSIONS.includes(ext)) {
     return { type: 'image', extension: ext };
   }
   if (['pdf'].includes(ext)) {
@@ -170,7 +192,7 @@ export function getCategoriesMetadata(files: FileItem[]): CategoryInfo[] {
       type: 'image',
       title: 'Imágenes',
       iconName: 'Image',
-      extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+      extensions: IMAGE_EXTENSIONS,
       color: 'text-amber-500',
       bgColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
     },

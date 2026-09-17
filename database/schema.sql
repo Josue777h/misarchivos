@@ -72,10 +72,12 @@ BEGIN
     END IF;
 END $$;
 
--- 5. Crear el bucket 'misarchivos' en storage si no existe
+-- 5. Crear o actualizar el bucket 'misarchivos' en storage como PÚBLICO (para vistas previas y fotos)
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('misarchivos', 'misarchivos', false)
-ON CONFLICT (id) DO NOTHING;
+VALUES ('misarchivos', 'misarchivos', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+UPDATE storage.buckets SET public = true WHERE id = 'misarchivos';
 
 -- 6. Habilitar Row Level Security (RLS) en la tabla files
 ALTER TABLE public.files ENABLE ROW LEVEL SECURITY;
@@ -120,6 +122,14 @@ DROP POLICY IF EXISTS "Usuarios pueden ver sus propios archivos de storage" ON s
 DROP POLICY IF EXISTS "Usuarios pueden subir sus propios archivos a storage" ON storage.objects;
 DROP POLICY IF EXISTS "Usuarios pueden actualizar sus propios archivos de storage" ON storage.objects;
 DROP POLICY IF EXISTS "Usuarios pueden eliminar sus propios archivos de storage" ON storage.objects;
+DROP POLICY IF EXISTS "Lectura pública de misarchivos" ON storage.objects;
+
+-- Permitir lectura pública para que cualquier etiqueta <img> cargue miniaturas al instante sin errores 403
+CREATE POLICY "Lectura pública de misarchivos"
+    ON storage.objects
+    FOR SELECT
+    TO public
+    USING (bucket_id = 'misarchivos');
 
 CREATE POLICY "Usuarios pueden ver sus propios archivos de storage"
     ON storage.objects

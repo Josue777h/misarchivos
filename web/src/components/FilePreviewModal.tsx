@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useFiles } from '../context/FileContext';
-import { formatFileSize, formatDate, safeShareFile, downloadBlobOrUrl } from '../lib/file-helpers';
+import { formatFileSize, formatDate, safeShareFile, downloadBlobOrUrl, isImageFile } from '../lib/file-helpers';
 import { FileIconBadge } from './FileIconBadge';
 import { X, Download, Share2, Info, ExternalLink, Eye, Trash2, FileText, Loader2, AlertCircle } from 'lucide-react';
 
@@ -118,10 +118,12 @@ export function FilePreviewModal() {
         {/* Multi-format In-App Content Viewer Body */}
         <div className="flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center bg-black min-h-[320px] max-h-[68vh]">
           {/* 1. Image Viewer */}
-          {previewFile.type === 'image' && previewFile.downloadUrl && !imageError ? (
+          {(previewFile.type === 'image' || isImageFile(previewFile.name, previewFile.mimeType)) &&
+          (previewFile.downloadUrl || previewFile.thumbnailUrl) &&
+          !imageError ? (
             <div className="relative max-w-full max-h-full flex items-center justify-center">
               <img
-                src={previewFile.downloadUrl}
+                src={previewFile.downloadUrl || previewFile.thumbnailUrl}
                 alt={previewFile.name}
                 onError={() => setImageError(true)}
                 className="max-h-[60vh] w-auto max-w-full rounded-2xl object-contain shadow-xl"

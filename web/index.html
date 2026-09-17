@@ -9,6 +9,80 @@
     <meta name="apple-mobile-web-app-title" content="MisArchivos" />
     <meta name="netlify-disable-drawer" content="true" />
     <meta name="netlify-drawer" content="false" />
+    <meta name="netlify-feedback" content="false" />
+    <style id="anti-netlify-styles">
+      netlify-drawer,
+      netlify-cdp-drawer,
+      netlify-feedback,
+      netlify-badge,
+      iframe[src*="netlify"],
+      [data-netlify-deploy-id],
+      .netlify-drawer-container,
+      #netlify-drawer-container,
+      div[class*="netlify"],
+      div[id*="netlify"],
+      button[class*="netlify"],
+      a[href*="netlify.com"],
+      a[href*="netlify.app"],
+      [data-netlify-identity-menu],
+      .netlify-identity-widget,
+      .netlify-badge {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        width: 0 !important;
+        position: absolute !important;
+        left: -99999px !important;
+        bottom: -99999px !important;
+        z-index: -99999 !important;
+      }
+    </style>
+    <script>
+      (function() {
+        // 1. Intercept custom element definitions for Netlify drawer
+        if (window.customElements && window.customElements.define) {
+          const origDefine = window.customElements.define.bind(window.customElements);
+          window.customElements.define = function(name, constructor, options) {
+            if (typeof name === 'string' && name.toLowerCase().includes('netlify')) {
+              return;
+            }
+            return origDefine(name, constructor, options);
+          };
+        }
+
+        // 2. Proactive DOM purging before React or Netlify scripts run
+        function purgeNetlify() {
+          try {
+            const selectors = [
+              'netlify-drawer',
+              'netlify-cdp-drawer',
+              'netlify-feedback',
+              'netlify-badge',
+              '#netlify-drawer-container',
+              '.netlify-drawer-container',
+              'iframe[src*="netlify"]',
+              '[data-netlify-deploy-id]',
+              'a[href*="netlify.com"]',
+              'a[href*="netlify.app"]'
+            ];
+            document.querySelectorAll(selectors.join(',')).forEach(function(el) {
+              el.remove();
+            });
+          } catch(e) {}
+        }
+
+        if (typeof document !== 'undefined') {
+          if (document.documentElement) {
+            new MutationObserver(purgeNetlify).observe(document.documentElement, { childList: true, subtree: true });
+          }
+          window.addEventListener('DOMContentLoaded', purgeNetlify);
+          window.addEventListener('load', purgeNetlify);
+        }
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <title>MisArchivos - Nube Personal</title>
   </head>
