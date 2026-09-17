@@ -53,6 +53,10 @@ body {
 }
 
 /* Ensure no third-party or Netlify feedback drawer / badge widgets ever appear */
+netlify-drawer,
+netlify-cdp-drawer,
+netlify-feedback,
+netlify-badge,
 iframe[src*="netlify"],
 [data-netlify-deploy-id],
 .netlify-drawer-container,

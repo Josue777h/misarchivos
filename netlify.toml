@@ -10,6 +10,8 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
+  NETLIFY_FEEDBACK_DRAWER = "false"
+  NETLIFY_DRAWER_ENABLED = "false"
 
 [build.processing]
   skip_processing = true
