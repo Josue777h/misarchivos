@@ -1,18 +1,17 @@
 # Netlify Configuration for MisArchivos (Web folder)
 [build]
   command = "npm run build"
-  publish = ".next"
+  publish = "out"
 
 [build.environment]
   NODE_VERSION = "20"
   NETLIFY_FEEDBACK_DRAWER = "false"
   NETLIFY_DRAWER_ENABLED = "false"
 
-[[headers]]
-  for = "/manifest.json"
-  [headers.values]
-    Content-Type = "application/manifest+json"
-    Cache-Control = "public, max-age=0, must-revalidate"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
 [[headers]]
   for = "/*"
