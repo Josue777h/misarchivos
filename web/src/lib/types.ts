@@ -18,6 +18,7 @@ export interface ConflictInfo {
 
 export interface FileItem {
   id: string;
+  userId?: string;
   name: string;
   relativePath: string;
   type: FileType;

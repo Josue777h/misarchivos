@@ -41,7 +41,7 @@ interface FileContextType {
 const FileContext = createContext<FileContextType | undefined>(undefined);
 
 export function FileProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<FileType | 'all'>('all');
@@ -54,9 +54,9 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
   const [lastSyncTime, setLastSyncTime] = useState<string>(new Date().toISOString());
   const [isSupabaseLive, setIsSupabaseLive] = useState(false);
 
-  // Load real files from Supabase only if authenticated
+  // Load files for the authenticated user only
   const loadFiles = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user?.id) {
       setFiles([]);
       setIsLoading(false);
       return;
@@ -65,7 +65,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       try {
         setIsSyncing(true);
-        const remoteFiles = await fetchFilesFromSupabase();
+        const remoteFiles = await fetchFilesFromSupabase(user.id);
         setFiles(remoteFiles || []);
         setIsSupabaseLive(true);
       } catch (err) {
@@ -79,26 +79,29 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       setFiles([]);
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
-    // Clear legacy mock cache from localStorage
-    localStorage.removeItem('misarchivos_files');
-    if (isAuthenticated) {
+    if (isAuthenticated && user?.id) {
       loadFiles();
     } else {
       setFiles([]);
+      setIsLoading(false);
     }
-  }, [isAuthenticated, loadFiles]);
+  }, [isAuthenticated, user?.id, loadFiles]);
 
-  // Realtime subscription to database changes
+  // Realtime subscription to database changes for this user
   useEffect(() => {
-    if (isAuthenticated && isSupabaseConfigured && supabase) {
+    if (isAuthenticated && user?.id && isSupabaseConfigured && supabase) {
       const channel = supabase
-        .channel('realtime-files-sync')
+        .channel(`realtime-files-${user.id}`)
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'files' },
+          {
+            event: '*',
+            schema: 'public',
+            table: 'files',
+          },
           () => {
             loadFiles();
           }
@@ -109,9 +112,9 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
         supabase?.removeChannel(channel);
       };
     }
-  }, [isAuthenticated, loadFiles]);
+  }, [isAuthenticated, user?.id, loadFiles]);
 
-  // Calculate storage stats from real files only
+  // Calculate storage stats from active files only
   const activeFiles = files.filter((f) => !f.isTrash);
   const trashFiles = files.filter((f) => f.isTrash);
   const totalUsedBytes = activeFiles.reduce((acc, f) => acc + (f.size || 0), 0);
@@ -144,6 +147,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
 
     const tempItem: FileItem = {
       id: 'temp-' + Date.now(),
+      userId: user?.id,
       name: file.name,
       relativePath: cleanRelPath,
       type: 'other',
@@ -159,8 +163,8 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
 
     setFiles((prev) => [tempItem, ...prev]);
 
-    if (isSupabaseConfigured) {
-      const result = await uploadFileToSupabase(file, cleanRelPath);
+    if (isSupabaseConfigured && user?.id) {
+      const result = await uploadFileToSupabase(file, cleanRelPath, user.id);
       if (result) {
         setFiles((prev) =>
           prev.map((f) => (f.id === tempItem.id ? { ...result, syncStatus: 'synced' } : f))
@@ -188,8 +192,8 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     if (previewFile?.id === id) setPreviewFile(null);
     if (infoFile?.id === id) setInfoFile(null);
 
-    if (isSupabaseConfigured) {
-      await softDeleteInSupabase(id);
+    if (isSupabaseConfigured && user?.id) {
+      await softDeleteInSupabase(id, user.id);
     }
   };
 
@@ -206,8 +210,8 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       )
     );
 
-    if (isSupabaseConfigured) {
-      await restoreFromTrashInSupabase(id);
+    if (isSupabaseConfigured && user?.id) {
+      await restoreFromTrashInSupabase(id, user.id);
     }
   };
 
@@ -217,8 +221,8 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     if (previewFile?.id === id) setPreviewFile(null);
     if (infoFile?.id === id) setInfoFile(null);
 
-    if (isSupabaseConfigured && target) {
-      await permanentDeleteInSupabase(id, target.relativePath);
+    if (isSupabaseConfigured && target && user?.id) {
+      await permanentDeleteInSupabase(id, target.relativePath, user.id);
     }
   };
 
@@ -226,9 +230,9 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     const trashList = files.filter((f) => f.isTrash);
     setFiles((prev) => prev.filter((f) => !f.isTrash));
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && user?.id) {
       for (const f of trashList) {
-        await permanentDeleteInSupabase(f.id, f.relativePath);
+        await permanentDeleteInSupabase(f.id, f.relativePath, user.id);
       }
     }
   };

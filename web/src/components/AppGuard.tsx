@@ -2,19 +2,29 @@
 
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LockScreen } from './LockScreen';
+import { AuthScreen } from './AuthScreen';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { FilePreviewModal } from './FilePreviewModal';
 import { FileInfoDrawer } from './FileInfoDrawer';
 import { FileUploadModal } from './FileUploadModal';
+import { Loader2 } from 'lucide-react';
 
 export function AppGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-7 h-7 text-white animate-spin" />
+        <span className="text-xs text-zinc-500 font-medium tracking-wide">Cargando MisArchivos...</span>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
-    return <LockScreen />;
+    return <AuthScreen />;
   }
 
   return (

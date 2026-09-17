@@ -57,12 +57,25 @@ iframe[src*="netlify"],
 [data-netlify-deploy-id],
 .netlify-drawer-container,
 #netlify-drawer-container,
-div[class*="netlify-feedback"],
-div[id*="netlify-drawer"],
-div[class*="netlify-badge"] {
+div[class*="netlify"],
+div[id*="netlify"],
+a[href*="netlify.com"],
+a[href*="netlify.app"],
+[data-netlify-identity-menu],
+.netlify-identity-widget,
+div:has(> a[href*="netlify.com"]),
+div:has(> a[href*="netlify.app"]),
+.netlify-badge {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
   opacity: 0 !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  width: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  bottom: -9999px !important;
+  z-index: -9999 !important;
 }
 

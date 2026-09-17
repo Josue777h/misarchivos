@@ -3,6 +3,7 @@ import './globals.css';
 import { AuthProvider } from '../context/AuthContext';
 import { FileProvider } from '../context/FileContext';
 import { AppGuard } from '../components/AppGuard';
+import { NetlifyRemover } from '../components/NetlifyRemover';
 
 export const metadata: Metadata = {
   title: 'MisArchivos - Sincronización Personal PC y Celular',
@@ -34,6 +35,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark">
       <body className="bg-black text-zinc-100 min-h-screen flex flex-col selection:bg-zinc-700 selection:text-white antialiased">
+        <NetlifyRemover />
         <AuthProvider>
           <FileProvider>
             <AppGuard>{children}</AppGuard>

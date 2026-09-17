@@ -15,14 +15,20 @@ export async function calculateSHA256(file: File | Blob): Promise<string> {
   }
 }
 
-export async function fetchFilesFromSupabase(): Promise<FileItem[]> {
+export async function fetchFilesFromSupabase(userId?: string): Promise<FileItem[]> {
   if (!supabase || !isSupabaseConfigured) return [];
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('files')
       .select('*')
       .order('updated_at', { ascending: false });
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching files from Supabase:', error);
@@ -31,7 +37,7 @@ export async function fetchFilesFromSupabase(): Promise<FileItem[]> {
 
     return (data || []).map((row: any) => {
       let publicUrl = '';
-      const storageKey = row.storage_path || sanitizeStorageKey(row.relative_path);
+      const storageKey = row.storage_path || (userId ? `${userId}/${sanitizeStorageKey(row.relative_path)}` : sanitizeStorageKey(row.relative_path));
       if (storageKey) {
         const { data: urlData } = supabase!.storage
           .from('misarchivos')
@@ -41,6 +47,7 @@ export async function fetchFilesFromSupabase(): Promise<FileItem[]> {
 
       return {
         id: row.id,
+        userId: row.user_id,
         name: row.name,
         relativePath: row.relative_path,
         type: row.file_type as FileType,
@@ -64,16 +71,21 @@ export async function fetchFilesFromSupabase(): Promise<FileItem[]> {
   }
 }
 
-export async function uploadFileToSupabase(file: File, relativePath = ''): Promise<FileItem | null> {
+export async function uploadFileToSupabase(
+  file: File,
+  relativePath = '',
+  userId?: string
+): Promise<FileItem | null> {
   if (!supabase || !isSupabaseConfigured) return null;
 
   try {
     const hash = await calculateSHA256(file);
     const { type, extension } = getFileTypeFromExtension(file.name);
     const cleanPath = relativePath || file.name;
-    const storagePath = sanitizeStorageKey(cleanPath);
+    const cleanKey = sanitizeStorageKey(cleanPath);
+    const storagePath = userId ? `${userId}/${cleanKey}` : cleanKey;
 
-    // 1. Upload to Supabase Storage bucket 'misarchivos'
+    // 1. Upload to Supabase Storage bucket 'misarchivos' in user's isolated folder
     const { error: storageError } = await supabase.storage
       .from('misarchivos')
       .upload(storagePath, file, {
@@ -85,14 +97,19 @@ export async function uploadFileToSupabase(file: File, relativePath = ''): Promi
       console.error('Storage upload error:', storageError);
     }
 
-    // 2. Query if record exists
-    const { data: existingRows } = await supabase
+    // 2. Query if record exists for THIS user
+    let existingQuery = supabase
       .from('files')
       .select('id')
-      .eq('relative_path', cleanPath)
-      .limit(1);
+      .eq('relative_path', cleanPath);
 
-    const payload = {
+    if (userId) {
+      existingQuery = existingQuery.eq('user_id', userId);
+    }
+
+    const { data: existingRows } = await existingQuery.limit(1);
+
+    const payload: any = {
       name: file.name,
       relative_path: cleanPath,
       file_type: type,
@@ -107,14 +124,22 @@ export async function uploadFileToSupabase(file: File, relativePath = ''): Promi
       updated_at: new Date().toISOString(),
     };
 
+    if (userId) {
+      payload.user_id = userId;
+    }
+
     let record = null;
     if (existingRows && existingRows.length > 0) {
-      const { data, error: updateError } = await supabase
+      let updateQuery = supabase
         .from('files')
         .update(payload)
-        .eq('id', existingRows[0].id)
-        .select()
-        .single();
+        .eq('id', existingRows[0].id);
+
+      if (userId) {
+        updateQuery = updateQuery.eq('user_id', userId);
+      }
+
+      const { data, error: updateError } = await updateQuery.select().single();
       if (!updateError) record = data;
     } else {
       const { data, error: insertError } = await supabase
@@ -131,6 +156,7 @@ export async function uploadFileToSupabase(file: File, relativePath = ''): Promi
 
     return {
       id: record?.id || 'temp-' + Date.now(),
+      userId: record?.user_id || userId,
       name: file.name,
       relativePath: cleanPath,
       type,
@@ -151,10 +177,10 @@ export async function uploadFileToSupabase(file: File, relativePath = ''): Promi
   }
 }
 
-export async function softDeleteInSupabase(id: string): Promise<boolean> {
+export async function softDeleteInSupabase(id: string, userId?: string): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured) return false;
 
-  const { error } = await supabase
+  let query = supabase
     .from('files')
     .update({
       is_trash: true,
@@ -163,13 +189,18 @@ export async function softDeleteInSupabase(id: string): Promise<boolean> {
     })
     .eq('id', id);
 
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+
+  const { error } = await query;
   return !error;
 }
 
-export async function restoreFromTrashInSupabase(id: string): Promise<boolean> {
+export async function restoreFromTrashInSupabase(id: string, userId?: string): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured) return false;
 
-  const { error } = await supabase
+  let query = supabase
     .from('files')
     .update({
       is_trash: false,
@@ -178,10 +209,19 @@ export async function restoreFromTrashInSupabase(id: string): Promise<boolean> {
     })
     .eq('id', id);
 
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+
+  const { error } = await query;
   return !error;
 }
 
-export async function permanentDeleteInSupabase(id: string, storagePath?: string): Promise<boolean> {
+export async function permanentDeleteInSupabase(
+  id: string,
+  storagePath?: string,
+  userId?: string
+): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured) return false;
 
   if (storagePath) {
@@ -189,6 +229,11 @@ export async function permanentDeleteInSupabase(id: string, storagePath?: string
     await supabase.storage.from('misarchivos').remove([cleanStorage]);
   }
 
-  const { error } = await supabase.from('files').delete().eq('id', id);
+  let query = supabase.from('files').delete().eq('id', id);
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+
+  const { error } = await query;
   return !error;
 }

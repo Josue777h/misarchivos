@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useMemo } from 'react';
 import { useFiles } from '../context/FileContext';
+import { useAuth } from '../context/AuthContext';
 import { FileCard } from '../components/FileCard';
 import { FileListItem } from '../components/FileListItem';
 import { FileType } from '../lib/types';
@@ -12,9 +13,7 @@ import {
   Upload,
   RefreshCw,
   Camera,
-  CheckCircle2,
-  HardDrive,
-  Plus,
+  Folder,
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -25,13 +24,12 @@ export default function HomePage() {
     selectedCategory,
     setSelectedCategory,
     searchQuery,
-    setSearchQuery,
     triggerManualSync,
     addUploadedFile,
-    isLoading,
     stats,
   } = useFiles();
 
+  const { user } = useAuth();
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -77,14 +75,14 @@ export default function HomePage() {
     { id: 'all', label: 'Todos', icon: '📁' },
     { id: 'image', label: 'Fotos', icon: '📷' },
     { id: 'pdf', label: 'PDFs', icon: '📄' },
-    { id: 'word', label: 'Word', icon: '📝' },
+    { id: 'word', label: 'Docs', icon: '📝' },
     { id: 'excel', label: 'Excel', icon: '📊' },
     { id: 'text', label: 'Texto', icon: '💻' },
     { id: 'other', label: 'Otros', icon: '📦' },
   ];
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
+    <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-150">
       {/* Hidden inputs for 1-click uploads */}
       <input
         ref={fileInputRef}
@@ -102,52 +100,50 @@ export default function HomePage() {
         className="hidden"
       />
 
-      {/* Hero Action Bar - Pure OLED Dark 1-Click Actions */}
-      <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-bold text-zinc-300 tracking-wide uppercase">
-                Sincronización PC ⇄ Celular
-              </span>
-            </div>
-            <span className="text-xs text-zinc-400 font-mono">
-              {stats.totalFiles} archivos ({activeFiles.length > 0 ? (activeFiles.reduce((a, b) => a + b.size, 0) / (1024 * 1024)).toFixed(1) : 0} MB)
+      {/* Hero Action Bar */}
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-semibold text-zinc-300">
+              {user?.email ? user.email.split('@')[0] : 'Mis Archivos'}
             </span>
           </div>
+          <span className="text-xs text-zinc-400 font-mono">
+            {stats.totalFiles} archivos ({activeFiles.length > 0 ? (activeFiles.reduce((a, b) => a + b.size, 0) / (1024 * 1024)).toFixed(1) : 0} MB)
+          </span>
+        </div>
 
-          {/* 1-Click Action Buttons */}
-          <div className="grid grid-cols-3 gap-2.5 sm:flex sm:items-center sm:gap-3">
-            <button
-              onClick={() => cameraInputRef.current?.click()}
-              className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 rounded-2xl bg-white text-black font-bold text-xs sm:text-sm shadow-md hover:bg-zinc-200 active:scale-95 transition-all text-center"
-            >
-              <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-              <span>Tomar Foto</span>
-            </button>
+        {/* 1-Click Action Buttons */}
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3">
+          <button
+            onClick={() => cameraInputRef.current?.click()}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white text-black font-bold text-xs sm:text-sm hover:bg-zinc-200 active:scale-95 transition-all text-center cursor-pointer"
+          >
+            <Camera className="w-4 h-4 text-black shrink-0" />
+            <span>Foto</span>
+          </button>
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-all text-center"
-            >
-              <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-300" />
-              <span>Subir Archivo</span>
-            </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs sm:text-sm active:scale-95 transition-all text-center cursor-pointer"
+          >
+            <Upload className="w-4 h-4 text-zinc-300 shrink-0" />
+            <span>Subir</span>
+          </button>
 
-            <button
-              onClick={handleSyncClick}
-              className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 rounded-2xl bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-semibold text-xs sm:text-sm active:scale-95 transition-all text-center"
-            >
-              <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${isSyncingLocal ? 'animate-spin text-white' : ''}`} />
-              <span>{isSyncingLocal ? 'Sincronizando' : 'Sincronizar'}</span>
-            </button>
-          </div>
+          <button
+            onClick={handleSyncClick}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-semibold text-xs sm:text-sm active:scale-95 transition-all text-center cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 shrink-0 ${isSyncingLocal ? 'animate-spin text-white' : ''}`} />
+            <span>{isSyncingLocal ? 'Listo' : 'Actualizar'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Category Pills Slider - 1 Click Filter */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
+      {/* Category Pills Slider */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {categoryChips.map((chip) => {
           const isSelected = selectedCategory === chip.id;
           const count =
@@ -159,16 +155,16 @@ export default function HomePage() {
             <button
               key={chip.id}
               onClick={() => setSelectedCategory(chip.id)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold shrink-0 transition-all active:scale-95 ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all active:scale-95 cursor-pointer ${
                 isSelected
-                  ? 'bg-white text-black font-bold shadow-md'
-                  : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                  ? 'bg-white text-black font-bold shadow-sm'
+                  : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-white'
               }`}
             >
               <span>{chip.icon}</span>
               <span>{chip.label}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                className={`text-[10px] px-1.5 py-0.2 rounded-md font-bold ${
                   isSelected
                     ? 'bg-black text-white'
                     : 'bg-zinc-800 text-zinc-400'
@@ -181,79 +177,77 @@ export default function HomePage() {
         })}
       </div>
 
-      {/* File List Header */}
+      {/* Section Header with count and view mode toggle */}
       <div className="flex items-center justify-between pt-1">
         <div className="flex items-center gap-2">
-          <FolderOpen className="w-5 h-5 text-white" />
-          <h2 className="text-base sm:text-lg font-bold text-white">
-            {selectedCategory === 'all' ? 'Todos los Archivos' : `Categoría: ${selectedCategory.toUpperCase()}`}
+          <Folder className="w-4 h-4 text-zinc-400" />
+          <h2 className="text-sm sm:text-base font-bold text-white">
+            {selectedCategory === 'all' ? 'Archivos' : `${selectedCategory.toUpperCase()}`}
           </h2>
-          <span className="text-xs text-zinc-400 font-mono">
+          <span className="text-xs text-zinc-500 font-mono">
             ({filteredFiles.length})
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-zinc-900 p-1 rounded-xl border border-zinc-800">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg transition-colors ${
-                viewMode === 'grid'
-                  ? 'bg-zinc-800 text-white shadow-xs'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-              title="Cuadrícula"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-lg transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-zinc-800 text-white shadow-xs'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-              title="Lista"
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="flex items-center bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              viewMode === 'grid'
+                ? 'bg-zinc-800 text-white shadow-xs'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+            title="Cuadrícula"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              viewMode === 'list'
+                ? 'bg-zinc-800 text-white shadow-xs'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+            title="Lista"
+          >
+            <List className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
-      {/* Files Container */}
+      {/* Files Display */}
       {filteredFiles.length === 0 ? (
-        <div className="p-10 sm:p-14 text-center bg-zinc-950 rounded-3xl border border-dashed border-zinc-800">
-          <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-3 text-zinc-400">
-            <FolderOpen className="w-7 h-7" />
+        <div className="p-8 sm:p-12 text-center bg-zinc-950 rounded-2xl border border-dashed border-zinc-850">
+          <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-3 text-zinc-500">
+            <FolderOpen className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-white">
-            {searchQuery ? 'No hay resultados' : 'Aún no hay archivos aquí'}
+          <h3 className="text-sm font-bold text-white">
+            {searchQuery ? 'No hay resultados' : 'No hay archivos'}
           </h3>
-          <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto">
+          <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto">
             {searchQuery
-              ? `No se encontró ningún archivo con "${searchQuery}".`
-              : 'Toma una foto con tu celular o sube un archivo con un solo clic.'}
+              ? `Sin coincidencias para "${searchQuery}".`
+              : 'Sube un archivo o toma una foto para comenzar.'}
           </p>
           <div className="flex items-center justify-center gap-2 mt-4">
             <button
               onClick={() => cameraInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-black rounded-xl text-xs font-bold hover:bg-zinc-200 shadow-md active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white text-black rounded-xl text-xs font-bold hover:bg-zinc-200 active:scale-95 cursor-pointer"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Tomar foto</span>
+              <span>Foto</span>
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-700 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-700 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 active:scale-95 cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
-              <span>Subir archivo</span>
+              <span>Subir</span>
             </button>
           </div>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3.5">
           {filteredFiles.map((file) => (
             <FileCard key={file.id} file={file} />
           ))}

@@ -26,7 +26,7 @@ export function Sidebar() {
     { href: '/files', label: 'Todos los Archivos', icon: Folder, count: stats.totalFiles },
     { href: '/categories', label: 'Categorías', icon: Layers },
     { href: '/trash', label: 'Papelera', icon: Trash2, count: stats.trashCount },
-    { href: '/settings', label: 'Sincronización', icon: Settings },
+    { href: '/settings', label: 'Cuenta y Ajustes', icon: Settings },
   ];
 
   return (
