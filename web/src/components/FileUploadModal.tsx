@@ -2,11 +2,23 @@
 
 import React, { useState, useRef } from 'react';
 import { useFiles } from '../context/FileContext';
-import { UploadCloud, Camera, Image, X, Folder, Check, FileText, Loader2 } from 'lucide-react';
-import { formatFileSize } from '../lib/file-helpers';
+import {
+  UploadCloud,
+  Camera,
+  Image,
+  X,
+  Folder,
+  FolderUp,
+  Check,
+  FileText,
+  Loader2,
+  FileCode,
+} from 'lucide-react';
+import { formatFileSize, extractDroppedItems, DroppedUploadItem } from '../lib/file-helpers';
 
 interface FileUploadPreview {
   name: string;
+  relativePath: string;
   size: number;
   type: string;
   previewUrl?: string;
@@ -20,6 +32,7 @@ export function FileUploadModal() {
   const [uploading, setUploading] = useState(false);
   const [filePreviews, setFilePreviews] = useState<FileUploadPreview[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   if (!isUploadModalOpen) return null;
@@ -34,38 +47,40 @@ export function FileUploadModal() {
     }
   };
 
-  const processFiles = async (filesList: FileList | null) => {
-    if (!filesList || filesList.length === 0) return;
-    
+  const processItems = async (itemsList: DroppedUploadItem[]) => {
+    if (!itemsList || itemsList.length === 0) return;
+
     // Create preview list
-    const previews: FileUploadPreview[] = [];
-    for (let i = 0; i < filesList.length; i++) {
-      const f = filesList[i];
-      const previewUrl = f.type.startsWith('image/') ? URL.createObjectURL(f) : undefined;
-      previews.push({
-        name: f.name,
-        size: f.size,
-        type: f.type,
-        previewUrl,
+    const previews: FileUploadPreview[] = itemsList.map((item) => {
+      const isImg = item.file.type.startsWith('image/');
+      return {
+        name: item.file.name,
+        relativePath: item.relativePath,
+        size: item.file.size,
+        type: item.file.type,
+        previewUrl: isImg ? URL.createObjectURL(item.file) : undefined,
         status: 'uploading',
-      });
-    }
+      };
+    });
+
     setFilePreviews(previews);
     setUploading(true);
 
     try {
-      for (let i = 0; i < filesList.length; i++) {
-        const file = filesList[i];
-        const relativePath = selectedFolder ? `${selectedFolder}/${file.name}` : file.name;
-        await addUploadedFile(file, relativePath);
-        
-        // Update status for this item
+      for (let i = 0; i < itemsList.length; i++) {
+        const item = itemsList[i];
+        const relativePath = selectedFolder
+          ? `${selectedFolder}/${item.relativePath}`
+          : item.relativePath;
+
+        await addUploadedFile(item.file, relativePath);
+
         setFilePreviews((prev) =>
-          prev.map((item, idx) => (idx === i ? { ...item, status: 'done' } : item))
+          prev.map((p, idx) => (idx === i ? { ...p, status: 'done' } : p))
         );
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error during upload batch:', err);
     } finally {
       setTimeout(() => {
         setUploading(false);
@@ -79,14 +94,34 @@ export function FileUploadModal() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      await processFiles(e.dataTransfer.files);
+    const droppedItems = await extractDroppedItems(e.dataTransfer);
+    if (droppedItems.length > 0) {
+      await processItems(droppedItems);
     }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      await processFiles(e.target.files);
+      const items: DroppedUploadItem[] = [];
+      for (let i = 0; i < e.target.files.length; i++) {
+        const file = e.target.files[i];
+        items.push({ file, relativePath: file.name });
+      }
+      await processItems(items);
+      e.target.value = '';
+    }
+  };
+
+  const handleFolderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const items: DroppedUploadItem[] = [];
+      for (let i = 0; i < e.target.files.length; i++) {
+        const file = e.target.files[i];
+        const relPath = (file as any).webkitRelativePath || file.name;
+        items.push({ file, relativePath: relPath });
+      }
+      await processItems(items);
+      e.target.value = '';
     }
   };
 
@@ -102,9 +137,14 @@ export function FileUploadModal() {
             <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center">
               <UploadCloud className="w-4 h-4" />
             </div>
-            <h3 className="font-bold text-white text-base">
-              Subir y Sincronizar
-            </h3>
+            <div>
+              <h3 className="font-bold text-white text-base leading-tight">
+                Subir Archivos y Carpetas
+              </h3>
+              <p className="text-[11px] text-zinc-400 font-mono">
+                HTML, CSS, Código, Word, Excel, TXT, TLS, Fotos, etc.
+              </p>
+            </div>
           </div>
           <button
             onClick={() => {
@@ -123,15 +163,15 @@ export function FileUploadModal() {
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1.5 flex items-center gap-1.5">
               <Folder className="w-3.5 h-3.5 text-zinc-400" />
-              Carpeta de destino
+              Carpeta de destino en tu nube
             </label>
             <div className="flex gap-1.5 flex-wrap text-xs">
-              {['', 'Fotos', 'Documentos', 'Trabajo', 'Descargas'].map((folder) => (
+              {['', 'Fotos', 'Documentos', 'Trabajo', 'Proyectos', 'Descargas'].map((folder) => (
                 <button
                   key={folder || 'root'}
                   type="button"
                   onClick={() => setSelectedFolder(folder)}
-                  className={`px-3 py-1.5 rounded-xl border font-semibold text-xs transition-all ${
+                  className={`px-3 py-1.5 rounded-xl border font-semibold text-xs transition-all cursor-pointer ${
                     selectedFolder === folder
                       ? 'bg-white text-black border-white shadow-xs'
                       : 'border-zinc-800 text-zinc-400 bg-zinc-900/60 hover:text-white hover:border-zinc-700'
@@ -143,6 +183,25 @@ export function FileUploadModal() {
             </div>
           </div>
 
+          {/* Hidden inputs */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            // @ts-ignore
+            webkitdirectory=""
+            directory=""
+            multiple
+            onChange={handleFolderChange}
+            className="hidden"
+          />
+
           {/* Drag & Drop Area */}
           {!uploading ? (
             <div
@@ -150,43 +209,53 @@ export function FileUploadModal() {
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-7 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+              className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all ${
                 dragActive
                   ? 'border-white bg-zinc-900 scale-[0.99]'
                   : 'border-zinc-800 hover:border-zinc-600 bg-zinc-900/50'
               }`}
             >
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center mb-2.5">
+              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center mb-2">
                 <UploadCloud className="w-6 h-6" />
               </div>
               <p className="text-sm font-bold text-white">
-                Arrastra y suelta tus archivos aquí
+                Arrastra y suelta tus archivos o carpetas aquí
               </p>
-              <p className="text-xs text-zinc-400 mt-1 max-w-xs">
-                o haz clic para explorar tus fotos y documentos
+              <p className="text-xs text-zinc-400 mt-1 max-w-sm">
+                Puedes soltar carpetas completas de código o páginas web manteniendo su estructura interna.
               </p>
-              <div className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white text-black rounded-xl text-xs font-bold shadow-sm">
-                Seleccionar archivos
+
+              {/* Upload actions buttons */}
+              <div className="mt-4 flex items-center gap-2 flex-wrap justify-center">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white text-black rounded-xl text-xs font-bold hover:bg-zinc-200 active:scale-95 transition-all shadow-sm cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Seleccionar archivos</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => folderInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 rounded-xl text-xs font-bold active:scale-95 transition-all shadow-sm cursor-pointer"
+                >
+                  <FolderUp className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Subir carpeta completa</span>
+                </button>
               </div>
             </div>
           ) : (
-            /* Live Uploading Preview Box */
+            /* Live Uploading Progress Box */
             <div className="bg-zinc-900/90 rounded-2xl p-4 border border-zinc-800 space-y-2.5">
               <div className="flex items-center justify-between text-xs text-zinc-300 font-semibold mb-1">
-                <span>Subiendo archivos...</span>
-                <span className="flex items-center gap-1 text-emerald-400">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Procesando
+                <span>Subiendo y procesando...</span>
+                <span className="flex items-center gap-1 text-emerald-400 font-mono text-[11px]">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> En progreso
                 </span>
               </div>
-              <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+              <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
                 {filePreviews.map((f, i) => (
                   <div
                     key={i}
@@ -199,8 +268,10 @@ export function FileUploadModal() {
                         <FileText className="w-6 h-6 text-zinc-400" />
                       )}
                       <div className="min-w-0">
-                        <p className="font-bold text-white truncate max-w-[200px]">{f.name}</p>
-                        <p className="text-[10px] text-zinc-500 font-mono">{formatFileSize(f.size)}</p>
+                        <p className="font-bold text-white truncate max-w-[240px]">{f.name}</p>
+                        <p className="text-[10px] text-zinc-500 font-mono truncate max-w-[240px]">
+                          {f.relativePath} • {formatFileSize(f.size)}
+                        </p>
                       </div>
                     </div>
                     <div>
@@ -224,7 +295,7 @@ export function FileUploadModal() {
               onClick={() => {
                 cameraInputRef.current?.click();
               }}
-              className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white font-semibold text-xs transition-all active:scale-95"
+              className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white font-semibold text-xs transition-all active:scale-95 cursor-pointer"
             >
               <Camera className="w-4 h-4 text-zinc-300" />
               <span>Tomar foto</span>
@@ -241,11 +312,11 @@ export function FileUploadModal() {
             <button
               type="button"
               disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white font-semibold text-xs transition-all active:scale-95"
+              onClick={() => folderInputRef.current?.click()}
+              className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white font-semibold text-xs transition-all active:scale-95 cursor-pointer"
             >
-              <Image className="w-4 h-4 text-zinc-300" />
-              <span>Galería / Archivos</span>
+              <FolderUp className="w-4 h-4 text-amber-400" />
+              <span>Subir carpeta</span>
             </button>
           </div>
         </div>

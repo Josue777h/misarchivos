@@ -1,8 +1,9 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useFiles } from '../context/FileContext';
 import { FileCard } from '../components/FileCard';
 import { FileListItem } from '../components/FileListItem';
 import { FileType } from '../lib/types';
+import { extractDroppedItems } from '../lib/file-helpers';
 import {
   Folder,
   LayoutGrid,
@@ -11,6 +12,7 @@ import {
   Filter,
   X,
   Upload,
+  FolderUp,
 } from 'lucide-react';
 
 export function FilesView() {
@@ -24,6 +26,10 @@ export function FilesView() {
     setViewMode,
     addUploadedFile,
   } = useFiles();
+
+  const [dragOverPage, setDragOverPage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const activeFiles = useMemo(() => {
     return files.filter((f) => !f.isTrash);
@@ -53,11 +59,9 @@ export function FilesView() {
     { id: 'pdf', label: 'PDFs', icon: '📄' },
     { id: 'word', label: 'Docs', icon: '📝' },
     { id: 'excel', label: 'Excel', icon: '📊' },
-    { id: 'text', label: 'Texto', icon: '💻' },
+    { id: 'text', label: 'Texto/Código', icon: '💻' },
     { id: 'other', label: 'Otros', icon: '📦' },
   ];
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -69,13 +73,58 @@ export function FilesView() {
     }
   };
 
+  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      for (let i = 0; i < e.target.files.length; i++) {
+        const file = e.target.files[i];
+        const relativePath = (file as any).webkitRelativePath || file.name;
+        await addUploadedFile(file, relativePath);
+      }
+      e.target.value = '';
+    }
+  };
+
+  const handlePageDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverPage(false);
+    const items = await extractDroppedItems(e.dataTransfer);
+    for (const item of items) {
+      await addUploadedFile(item.file, item.relativePath);
+    }
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-150">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOverPage(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setDragOverPage(false);
+        }
+      }}
+      onDrop={handlePageDrop}
+      className={`space-y-4 sm:space-y-5 animate-in fade-in duration-150 rounded-3xl transition-all ${
+        dragOverPage ? 'ring-2 ring-white ring-offset-4 ring-offset-black bg-zinc-950/40' : ''
+      }`}
+    >
       <input
         ref={fileInputRef}
         type="file"
         multiple
         onChange={handleQuickUpload}
+        className="hidden"
+      />
+      <input
+        ref={folderInputRef}
+        type="file"
+        // @ts-ignore
+        webkitdirectory=""
+        directory=""
+        multiple
+        onChange={handleFolderUpload}
         className="hidden"
       />
 
@@ -91,7 +140,25 @@ export function FilesView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
+            title="Subir archivos sueltos"
+          >
+            <Upload className="w-3.5 h-3.5 text-zinc-300" />
+            <span>Subir</span>
+          </button>
+
+          <button
+            onClick={() => folderInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
+            title="Subir carpeta completa con toda su estructura"
+          >
+            <FolderUp className="w-3.5 h-3.5 text-amber-400" />
+            <span>Carpeta</span>
+          </button>
+
           <div className="flex items-center bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
             <button
               onClick={() => setViewMode('grid')}

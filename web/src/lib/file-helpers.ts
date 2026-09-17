@@ -22,6 +22,85 @@ export function isImageFile(filename: string, mimeType?: string): boolean {
   return IMAGE_EXTENSIONS.includes(ext);
 }
 
+export const CODE_AND_TEXT_EXTENSIONS = [
+  'txt',
+  'md',
+  'markdown',
+  'log',
+  'json',
+  'json5',
+  'xml',
+  'yaml',
+  'yml',
+  'toml',
+  'ini',
+  'env',
+  'conf',
+  'config',
+  'html',
+  'htm',
+  'xhtml',
+  'css',
+  'scss',
+  'sass',
+  'less',
+  'js',
+  'mjs',
+  'cjs',
+  'jsx',
+  'ts',
+  'tsx',
+  'py',
+  'pyw',
+  'java',
+  'c',
+  'cpp',
+  'h',
+  'hpp',
+  'cs',
+  'go',
+  'rs',
+  'php',
+  'rb',
+  'swift',
+  'kt',
+  'dart',
+  'sql',
+  'sh',
+  'bash',
+  'zsh',
+  'bat',
+  'cmd',
+  'ps1',
+  'tls',
+  'crt',
+  'pem',
+  'key',
+  'cer',
+  'csr',
+  'pub',
+  'csv',
+  'tsv',
+];
+
+export function isTextOrCodeFile(filename: string, mimeType?: string): boolean {
+  if (
+    mimeType &&
+    (mimeType.startsWith('text/') ||
+      mimeType.includes('json') ||
+      mimeType.includes('xml') ||
+      mimeType.includes('javascript') ||
+      mimeType.includes('typescript') ||
+      mimeType.includes('html') ||
+      mimeType.includes('css'))
+  ) {
+    return true;
+  }
+  const parts = (filename || '').split('.');
+  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
+  return CODE_AND_TEXT_EXTENSIONS.includes(ext);
+}
+
 export function getFileTypeFromExtension(filename: string): { type: FileType; extension: string } {
   const parts = (filename || '').split('.');
   const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
@@ -41,11 +120,86 @@ export function getFileTypeFromExtension(filename: string): { type: FileType; ex
   if (['ppt', 'pptx', 'odp'].includes(ext)) {
     return { type: 'powerpoint', extension: ext };
   }
-  if (['txt', 'md', 'json', 'log', 'xml', 'yaml', 'yml', 'js', 'ts', 'html', 'css'].includes(ext)) {
+  if (CODE_AND_TEXT_EXTENSIONS.includes(ext)) {
     return { type: 'text', extension: ext };
   }
 
   return { type: 'other', extension: ext };
+}
+
+export interface DroppedUploadItem {
+  file: File;
+  relativePath: string;
+}
+
+/**
+ * Recursively traverses dropped files AND entire folders (using DataTransferItemList / FileSystemEntry)
+ */
+export async function extractDroppedItems(dataTransfer: DataTransfer): Promise<DroppedUploadItem[]> {
+  const items = dataTransfer.items;
+  const result: DroppedUploadItem[] = [];
+
+  if (items && items.length > 0 && typeof (items[0] as any).webkitGetAsEntry === 'function') {
+    const entries: any[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const entry = (items[i] as any).webkitGetAsEntry();
+      if (entry) entries.push(entry);
+    }
+
+    async function traverseEntry(entry: any, currentPath = ''): Promise<void> {
+      if (entry.isFile) {
+        return new Promise<void>((resolve) => {
+          entry.file(
+            (file: File) => {
+              const relPath = currentPath ? `${currentPath}/${file.name}` : file.name;
+              result.push({ file, relativePath: relPath });
+              resolve();
+            },
+            () => resolve()
+          );
+        });
+      } else if (entry.isDirectory) {
+        const dirReader = entry.createReader();
+        const dirPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+
+        return new Promise<void>((resolve) => {
+          const readBatch = () => {
+            dirReader.readEntries(
+              async (subEntries: any[]) => {
+                if (subEntries.length === 0) {
+                  resolve();
+                } else {
+                  for (const sub of subEntries) {
+                    await traverseEntry(sub, dirPath);
+                  }
+                  readBatch();
+                }
+              },
+              () => resolve()
+            );
+          };
+          readBatch();
+        });
+      }
+    }
+
+    for (const entry of entries) {
+      await traverseEntry(entry);
+    }
+
+    if (result.length > 0) return result;
+  }
+
+  // Fallback to standard files array
+  if (dataTransfer.files && dataTransfer.files.length > 0) {
+    for (let i = 0; i < dataTransfer.files.length; i++) {
+      const file = dataTransfer.files[i];
+      const relPath = (file as any).webkitRelativePath || file.name;
+      result.push({ file, relativePath: relPath });
+    }
+  }
+
+  return result;
 }
 
 // Sanitize storage key to prevent S3/Supabase 'Invalid key' errors

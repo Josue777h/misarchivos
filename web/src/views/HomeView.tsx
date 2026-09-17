@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { FileCard } from '../components/FileCard';
 import { FileListItem } from '../components/FileListItem';
 import { FileType } from '../lib/types';
+import { extractDroppedItems } from '../lib/file-helpers';
 import {
   FolderOpen,
   LayoutGrid,
@@ -12,6 +13,7 @@ import {
   RefreshCw,
   Camera,
   Folder,
+  FolderUp,
 } from 'lucide-react';
 
 interface HomeViewProps {
@@ -33,7 +35,9 @@ export function HomeView({ onNavigate }: HomeViewProps) {
 
   const { user } = useAuth();
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
+  const [dragOverPage, setDragOverPage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const activeFiles = useMemo(() => files.filter((f) => !f.isTrash), [files]);
@@ -67,6 +71,27 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     }
   };
 
+  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      for (let i = 0; i < e.target.files.length; i++) {
+        const file = e.target.files[i];
+        const relativePath = (file as any).webkitRelativePath || file.name;
+        await addUploadedFile(file, relativePath);
+      }
+      e.target.value = '';
+    }
+  };
+
+  const handlePageDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverPage(false);
+    const items = await extractDroppedItems(e.dataTransfer);
+    for (const item of items) {
+      await addUploadedFile(item.file, item.relativePath);
+    }
+  };
+
   const handleSyncClick = async () => {
     setIsSyncingLocal(true);
     await triggerManualSync();
@@ -84,13 +109,37 @@ export function HomeView({ onNavigate }: HomeViewProps) {
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-150">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOverPage(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setDragOverPage(false);
+        }
+      }}
+      onDrop={handlePageDrop}
+      className={`relative space-y-4 sm:space-y-5 animate-in fade-in duration-150 rounded-3xl transition-all ${
+        dragOverPage ? 'ring-2 ring-white ring-offset-4 ring-offset-black bg-zinc-950/40' : ''
+      }`}
+    >
       {/* Hidden inputs for 1-click uploads */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
         onChange={(e) => handleQuickUpload(e, false)}
+        className="hidden"
+      />
+      <input
+        ref={folderInputRef}
+        type="file"
+        // @ts-ignore
+        webkitdirectory=""
+        directory=""
+        multiple
+        onChange={handleFolderUpload}
         className="hidden"
       />
       <input
@@ -117,21 +166,31 @@ export function HomeView({ onNavigate }: HomeViewProps) {
         </div>
 
         {/* 1-Click Action Buttons */}
-        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3">
+        <div className="grid grid-cols-4 gap-2 sm:flex sm:items-center sm:gap-3">
           <button
             onClick={() => cameraInputRef.current?.click()}
             className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white text-black font-bold text-xs sm:text-sm hover:bg-zinc-200 active:scale-95 transition-all text-center cursor-pointer"
           >
             <Camera className="w-4 h-4 text-black shrink-0" />
-            <span>Foto</span>
+            <span className="hidden sm:inline">Tomar</span> Foto
           </button>
 
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs sm:text-sm active:scale-95 transition-all text-center cursor-pointer"
+            title="Subir archivos sueltos"
           >
             <Upload className="w-4 h-4 text-zinc-300 shrink-0" />
             <span>Subir</span>
+          </button>
+
+          <button
+            onClick={() => folderInputRef.current?.click()}
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs sm:text-sm active:scale-95 transition-all text-center cursor-pointer"
+            title="Subir carpeta completa con toda su estructura"
+          >
+            <FolderUp className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Carpeta</span>
           </button>
 
           <button
