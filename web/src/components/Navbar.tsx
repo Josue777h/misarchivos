@@ -19,12 +19,11 @@ export function Navbar({ onNavigate }: NavbarProps) {
           onClick={() => onNavigate('home')}
           className="flex items-center gap-2.5 shrink-0 group cursor-pointer"
         >
-          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:bg-zinc-100 transition-colors">
-            <HardDrive className="w-4 h-4 text-black" />
-          </div>
-          <span className="hidden sm:block font-bold text-base tracking-tight text-white">
-            MisArchivos
-          </span>
+          <img
+            src="/logo-raw.png"
+            alt="MisArchivos"
+            className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
+          />
         </button>
 
         {/* Search */}

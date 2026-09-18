@@ -84,20 +84,48 @@ export const CODE_AND_TEXT_EXTENSIONS = [
 ];
 
 export function isTextOrCodeFile(filename: string, mimeType?: string): boolean {
-  if (
-    mimeType &&
-    (mimeType.startsWith('text/') ||
-      mimeType.includes('json') ||
-      mimeType.includes('xml') ||
-      mimeType.includes('javascript') ||
-      mimeType.includes('typescript') ||
-      mimeType.includes('html') ||
-      mimeType.includes('css'))
-  ) {
-    return true;
-  }
   const parts = (filename || '').split('.');
   const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
+
+  // Explicit non-text extensions: Office, PDFs, Archives, Media, Binaries
+  if ([
+    'doc', 'docx', 'odt', 'rtf',
+    'xls', 'xlsx', 'ods',
+    'ppt', 'pptx', 'odp',
+    'pdf', 'zip', 'rar', '7z', 'tar', 'gz',
+    'exe', 'dll', 'bin', 'iso', 'dmg',
+    'mp3', 'wav', 'ogg', 'm4a', 'aac',
+    'mp4', 'webm', 'mov', 'mkv', 'avi',
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico'
+  ].includes(ext)) {
+    return false;
+  }
+
+  // Check MIME types, strictly avoiding OpenXML and binary office formats
+  if (mimeType) {
+    if (
+      mimeType.includes('openxmlformats') ||
+      mimeType.includes('msword') ||
+      mimeType.includes('ms-excel') ||
+      mimeType.includes('ms-powerpoint') ||
+      mimeType.includes('officedocument')
+    ) {
+      return false;
+    }
+    if (
+      mimeType.startsWith('text/') ||
+      mimeType === 'application/json' ||
+      mimeType === 'application/xml' ||
+      mimeType === 'text/xml' ||
+      mimeType.includes('javascript') ||
+      mimeType.includes('typescript') ||
+      mimeType === 'application/x-sh' ||
+      mimeType === 'application/x-yaml'
+    ) {
+      return true;
+    }
+  }
+
   return CODE_AND_TEXT_EXTENSIONS.includes(ext);
 }
 
