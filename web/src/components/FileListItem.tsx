@@ -13,8 +13,9 @@ interface Props {
 }
 
 export function FileListItem({ file }: Props) {
-  const { setPreviewFile, moveToTrash } = useFiles();
+  const { setPreviewFile, moveToTrash, selectedFileIds, toggleFileSelection } = useFiles();
   const [imageError, setImageError] = useState(false);
+  const isSelected = selectedFileIds.has(file.id);
 
   const isImage = file.type === 'image' || isImageFile(file.name, file.mimeType);
   const imageSource = !imageError && isImage ? file.thumbnailUrl || file.downloadUrl : undefined;
@@ -33,12 +34,38 @@ export function FileListItem({ file }: Props) {
     moveToTrash(file.id);
   };
 
+  const handleCheckbox = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFileSelection(file.id);
+  };
+
   return (
     <div
       onClick={() => setPreviewFile(file)}
-      className="group flex items-center justify-between p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-[0.99]"
+      className={`group flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.99] animate-in fade-in duration-200 ${
+        isSelected
+          ? 'bg-indigo-950/30 border-indigo-500 shadow-md shadow-indigo-950/30 ring-1 ring-indigo-500/50'
+          : 'bg-zinc-900/90 border-zinc-800 hover:border-zinc-600 hover:shadow-lg'
+      }`}
     >
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        {/* Selection Checkbox */}
+        <div
+          onClick={handleCheckbox}
+          className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+            isSelected
+              ? 'bg-indigo-600 border-indigo-500 text-white'
+              : 'border-zinc-700 bg-zinc-800/80 hover:border-zinc-500'
+          }`}
+          title={isSelected ? 'Deseleccionar' : 'Seleccionar'}
+        >
+          {isSelected && (
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
+        </div>
+
         {imageSource ? (
           <div className="w-11 h-11 shrink-0 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 shadow-xs flex items-center justify-center">
             <img

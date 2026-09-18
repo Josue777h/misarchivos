@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useFiles } from '../context/FileContext';
 import {
   formatFileSize,
@@ -28,7 +26,11 @@ import {
   Calendar,
   FolderTree,
   ShieldCheck,
+  FileSpreadsheet,
+  AlertCircle,
 } from 'lucide-react';
+import { renderAsync } from 'docx-preview';
+import * as XLSX from 'xlsx';
 
 export function FilePreviewModal() {
   const { previewFile, setPreviewFile, setInfoFile, moveToTrash } = useFiles();
@@ -37,12 +39,21 @@ export function FilePreviewModal() {
   const [loadingText, setLoadingText] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
+  // Office document preview state
+  const [officeLoading, setOfficeLoading] = useState(false);
+  const [officeError, setOfficeError] = useState<string | null>(null);
+  const [excelSheets, setExcelSheets] = useState<{ name: string; html: string }[]>([]);
+  const [activeSheetIndex, setActiveSheetIndex] = useState(0);
+  const docxContainerRef = useRef<HTMLDivElement>(null);
+
+  const ext = previewFile?.extension.toLowerCase() || '';
   const isImage = previewFile ? isImageFile(previewFile.name, previewFile.mimeType) : false;
   const isTextOrCode = previewFile ? isTextOrCodeFile(previewFile.name, previewFile.mimeType) : false;
   const isPdf = previewFile?.type === 'pdf';
-  const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(previewFile?.extension.toLowerCase() || '');
-  const isVideo = ['mp4', 'webm', 'mov', 'mkv'].includes(previewFile?.extension.toLowerCase() || '');
-  const isOfficeDoc = ['word', 'excel', 'powerpoint'].includes(previewFile?.type || '');
+  const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext);
+  const isVideo = ['mp4', 'webm', 'mov', 'mkv'].includes(ext);
+  const isDocx = ext === 'docx';
+  const isExcel = ['xlsx', 'xls', 'csv'].includes(ext) || previewFile?.type === 'excel';
 
   // Fetch text/code file content directly for instant in-app inspection
   useEffect(() => {
@@ -76,6 +87,83 @@ export function FilePreviewModal() {
       setLoadingText(false);
     }
   }, [previewFile, isTextOrCode]);
+
+  // Fetch and render Word / Excel documents
+  useEffect(() => {
+    if (!previewFile) {
+      setExcelSheets([]);
+      setOfficeError(null);
+      setOfficeLoading(false);
+      return;
+    }
+
+    const contentUrl = previewFile.downloadUrl || previewFile.thumbnailUrl;
+    if (!contentUrl) {
+      setOfficeLoading(false);
+      return;
+    }
+
+    if (isDocx) {
+      setOfficeLoading(true);
+      setOfficeError(null);
+      fetch(contentUrl)
+        .then((res) => {
+          if (!res.ok) throw new Error('Error al descargar el archivo Word');
+          return res.arrayBuffer();
+        })
+        .then(async (arrayBuffer) => {
+          if (docxContainerRef.current) {
+            docxContainerRef.current.innerHTML = '';
+            await renderAsync(arrayBuffer, docxContainerRef.current, undefined, {
+              className: 'docx',
+              inWrapper: true,
+              ignoreWidth: false,
+              ignoreHeight: false,
+              experimental: true,
+            });
+          }
+        })
+        .catch((err) => {
+          console.error('Word rendering error:', err);
+          setOfficeError('No se pudo renderizar la vista previa del documento Word.');
+        })
+        .finally(() => {
+          setOfficeLoading(false);
+        });
+    } else if (isExcel) {
+      setOfficeLoading(true);
+      setOfficeError(null);
+      fetch(contentUrl)
+        .then((res) => {
+          if (!res.ok) throw new Error('Error al descargar la hoja de cálculo');
+          return res.arrayBuffer();
+        })
+        .then((arrayBuffer) => {
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheets = workbook.SheetNames.map((name) => {
+            const worksheet = workbook.Sheets[name];
+            const html = XLSX.utils.sheet_to_html(worksheet, {
+              id: `excel-sheet-${name}`,
+              editable: false,
+            });
+            return { name, html };
+          });
+          setExcelSheets(sheets);
+          setActiveSheetIndex(0);
+        })
+        .catch((err) => {
+          console.error('Excel rendering error:', err);
+          setOfficeError('No se pudo generar la vista previa de las hojas de Excel.');
+        })
+        .finally(() => {
+          setOfficeLoading(false);
+        });
+    } else {
+      setExcelSheets([]);
+      setOfficeError(null);
+      setOfficeLoading(false);
+    }
+  }, [previewFile, isDocx, isExcel]);
 
   if (!previewFile) return null;
 
@@ -285,6 +373,111 @@ export function FilePreviewModal() {
               <FileIconBadge type="other" className="w-16 h-16 mx-auto shadow-md" iconClassName="w-8 h-8" />
               <h4 className="font-bold text-white text-base truncate">{previewFile.name}</h4>
               <audio controls src={previewFile.downloadUrl} className="w-full mt-2" />
+            </div>
+          ) : isDocx ? (
+            /* 6. In-App Word Document Viewer (.docx) */
+            <div className="w-full h-full min-h-[60vh] flex flex-col rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900/50">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-xs">
+                <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-blue-400" />
+                  Visor de Word Integrado (.docx)
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleDownload}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors text-xs font-bold cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Descargar</span>
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4 bg-zinc-950/80">
+                {officeLoading ? (
+                  <div className="flex flex-col items-center justify-center h-56 gap-3 text-zinc-400">
+                    <Loader2 className="w-7 h-7 animate-spin text-blue-400" />
+                    <span>Renderizando páginas del documento Word...</span>
+                  </div>
+                ) : officeError ? (
+                  <div className="p-8 text-center text-zinc-400 space-y-3">
+                    <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
+                    <p>{officeError}</p>
+                    <button
+                      onClick={handleDownload}
+                      className="px-4 py-2 bg-zinc-800 text-white rounded-xl text-xs font-semibold hover:bg-zinc-700"
+                    >
+                      Descargar archivo para abrir en Office
+                    </button>
+                  </div>
+                ) : (
+                  <div ref={docxContainerRef} className="max-w-4xl mx-auto" />
+                )}
+              </div>
+            </div>
+          ) : isExcel ? (
+            /* 7. In-App Excel Sheet Viewer (.xlsx, .xls, .csv) */
+            <div className="w-full h-full min-h-[60vh] flex flex-col rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900/50">
+              <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800 text-xs gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                    Visor de Hojas de Cálculo
+                  </span>
+                </div>
+                {/* Sheet Tabs */}
+                {excelSheets.length > 0 && (
+                  <div className="flex items-center gap-1 overflow-x-auto max-w-sm py-0.5">
+                    {excelSheets.map((sheet, index) => (
+                      <button
+                        key={sheet.name}
+                        onClick={() => setActiveSheetIndex(index)}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          activeSheetIndex === index
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                        }`}
+                      >
+                        {sheet.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={handleDownload}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors text-xs font-bold cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar</span>
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto bg-zinc-950">
+                {officeLoading ? (
+                  <div className="flex flex-col items-center justify-center h-56 gap-3 text-zinc-400">
+                    <Loader2 className="w-7 h-7 animate-spin text-emerald-400" />
+                    <span>Generando tablas de la hoja de cálculo...</span>
+                  </div>
+                ) : officeError ? (
+                  <div className="p-8 text-center text-zinc-400 space-y-3">
+                    <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
+                    <p>{officeError}</p>
+                    <button
+                      onClick={handleDownload}
+                      className="px-4 py-2 bg-zinc-800 text-white rounded-xl text-xs font-semibold hover:bg-zinc-700"
+                    >
+                      Descargar archivo para abrir en Excel
+                    </button>
+                  </div>
+                ) : excelSheets.length > 0 && excelSheets[activeSheetIndex] ? (
+                  <div
+                    dangerouslySetInnerHTML={{ __html: excelSheets[activeSheetIndex].html }}
+                    className="excel-table-container p-4 overflow-auto max-h-[58vh]"
+                  />
+                ) : (
+                  <div className="p-8 text-center text-zinc-500">
+                    <p>No se encontraron datos tabulares en este archivo.</p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             /* 6. In-App Document Inspection & 1-Click Download Panel (Word, Excel, PowerPoint, Zip, etc. - NO external Google Drive!) */

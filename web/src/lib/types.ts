@@ -58,3 +58,18 @@ export interface CategoryInfo {
   color: string;
   bgColor: string;
 }
+
+export interface FolderInfo {
+  name: string;
+  path: string;
+  fileCount: number;
+  totalSizeBytes: number;
+  updatedAt?: string;
+}
+
+export interface BatchUploadProgress {
+  active: boolean;
+  completed: number;
+  total: number;
+  currentFileName?: string;
+}

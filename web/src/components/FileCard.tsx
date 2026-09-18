@@ -1,21 +1,20 @@
-'use client';
-
 import React, { useState } from 'react';
 import { FileItem } from '../lib/types';
 import { formatFileSize, formatDate, downloadBlobOrUrl, isImageFile } from '../lib/file-helpers';
 import { FileIconBadge } from './FileIconBadge';
 import { FileActionsMenu } from './FileActionsMenu';
 import { useFiles } from '../context/FileContext';
-import { AlertCircle, RefreshCw, CheckCircle2, Clock, Download, Eye, Trash2 } from 'lucide-react';
+import { AlertCircle, RefreshCw, CheckCircle2, Clock, Download, Trash2, Check } from 'lucide-react';
 
 interface Props {
   file: FileItem;
 }
 
 export function FileCard({ file }: Props) {
-  const { setPreviewFile, moveToTrash } = useFiles();
+  const { setPreviewFile, moveToTrash, selectedFileIds, toggleFileSelection } = useFiles();
   const [imageError, setImageError] = useState(false);
 
+  const isSelected = selectedFileIds.has(file.id);
   const isImage = file.type === 'image' || isImageFile(file.name, file.mimeType);
   const imageSource = !imageError && isImage ? file.thumbnailUrl || file.downloadUrl : undefined;
 
@@ -36,7 +35,11 @@ export function FileCard({ file }: Props) {
   return (
     <div
       onClick={() => setPreviewFile(file)}
-      className="group relative bg-zinc-900/90 rounded-2xl border border-zinc-800 hover:border-zinc-600 shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between active:scale-[0.99]"
+      className={`group relative bg-zinc-900/90 rounded-2xl border shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between active:scale-[0.99] animate-in fade-in zoom-in-95 ${
+        isSelected
+          ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-zinc-850'
+          : 'border-zinc-800 hover:border-zinc-600'
+      }`}
     >
       {/* Thumbnail or File Type Area */}
       <div className="relative w-full h-40 bg-zinc-950 flex items-center justify-center overflow-hidden">
@@ -57,8 +60,24 @@ export function FileCard({ file }: Props) {
           />
         )}
 
+        {/* Selection Checkbox (always visible if selected, shows on hover if unselected) */}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleFileSelection(file.id);
+          }}
+          className={`absolute top-2.5 left-2.5 z-10 w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+            isSelected
+              ? 'bg-emerald-500 text-black shadow-md'
+              : 'bg-black/60 backdrop-blur-md border border-zinc-600 text-transparent opacity-0 group-hover:opacity-100 hover:border-white hover:text-white'
+          }`}
+          title={isSelected ? 'Deseleccionar' : 'Seleccionar'}
+        >
+          <Check className="w-3.5 h-3.5 stroke-[3]" />
+        </div>
+
         {/* Sync Status Badge Overlay */}
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/95 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] font-semibold border border-zinc-800 shadow-xs">
+        <div className="absolute top-2.5 left-10 flex items-center gap-1 bg-zinc-900/95 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] font-semibold border border-zinc-800 shadow-xs">
           {file.syncStatus === 'synced' && (
             <span className="flex items-center gap-1 text-emerald-400">
               <CheckCircle2 className="w-3 h-3" />

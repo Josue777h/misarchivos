@@ -26,9 +26,9 @@ interface FileUploadPreview {
 }
 
 export function FileUploadModal() {
-  const { isUploadModalOpen, setIsUploadModalOpen, addUploadedFile } = useFiles();
+  const { isUploadModalOpen, setIsUploadModalOpen, uploadBatchFiles, currentFolder } = useFiles();
   const [dragActive, setDragActive] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState('');
+  const [selectedFolder, setSelectedFolder] = useState(currentFolder || '');
   const [uploading, setUploading] = useState(false);
   const [filePreviews, setFilePreviews] = useState<FileUploadPreview[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,44 +50,19 @@ export function FileUploadModal() {
   const processItems = async (itemsList: DroppedUploadItem[]) => {
     if (!itemsList || itemsList.length === 0) return;
 
-    // Create preview list
-    const previews: FileUploadPreview[] = itemsList.map((item) => {
-      const isImg = item.file.type.startsWith('image/');
-      return {
-        name: item.file.name,
-        relativePath: item.relativePath,
-        size: item.file.size,
-        type: item.file.type,
-        previewUrl: isImg ? URL.createObjectURL(item.file) : undefined,
-        status: 'uploading',
-      };
+    setUploading(true);
+    const mapped = itemsList.map((item) => {
+      const rel = selectedFolder
+        ? `${selectedFolder}/${item.relativePath}`
+        : item.relativePath;
+      return { file: item.file, relativePath: rel };
     });
 
-    setFilePreviews(previews);
-    setUploading(true);
+    // Close modal quickly so user sees smooth UI and live floating progress bar
+    setIsUploadModalOpen(false);
+    setUploading(false);
 
-    try {
-      for (let i = 0; i < itemsList.length; i++) {
-        const item = itemsList[i];
-        const relativePath = selectedFolder
-          ? `${selectedFolder}/${item.relativePath}`
-          : item.relativePath;
-
-        await addUploadedFile(item.file, relativePath);
-
-        setFilePreviews((prev) =>
-          prev.map((p, idx) => (idx === i ? { ...p, status: 'done' } : p))
-        );
-      }
-    } catch (err) {
-      console.error('Error during upload batch:', err);
-    } finally {
-      setTimeout(() => {
-        setUploading(false);
-        setFilePreviews([]);
-        setIsUploadModalOpen(false);
-      }, 700);
-    }
+    await uploadBatchFiles(mapped);
   };
 
   const handleDrop = async (e: React.DragEvent) => {

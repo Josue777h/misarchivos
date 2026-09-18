@@ -2,6 +2,11 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useFiles } from '../context/FileContext';
 import { FileCard } from '../components/FileCard';
 import { FileListItem } from '../components/FileListItem';
+import { FolderCard } from '../components/FolderCard';
+import { BreadcrumbsNav } from '../components/BreadcrumbsNav';
+import { CreateFolderModal } from '../components/CreateFolderModal';
+import { BatchActionBar } from '../components/BatchActionBar';
+import { UploadProgressBar } from '../components/UploadProgressBar';
 import { FileType } from '../lib/types';
 import { extractDroppedItems } from '../lib/file-helpers';
 import {
@@ -13,6 +18,16 @@ import {
   X,
   Upload,
   FolderUp,
+  FolderPlus,
+  Layers,
+  Image as ImageIcon,
+  FileText,
+  FileEdit,
+  FileSpreadsheet,
+  FileCode,
+  Package,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 
 export function FilesView() {
@@ -24,7 +39,13 @@ export function FilesView() {
     setSelectedCategory,
     viewMode,
     setViewMode,
-    addUploadedFile,
+    uploadBatchFiles,
+    currentFolder,
+    customFolders,
+    selectedFileIds,
+    selectAllFiles,
+    clearSelection,
+    setIsCreateFolderOpen,
   } = useFiles();
 
   const [dragOverPage, setDragOverPage] = useState(false);
@@ -34,6 +55,47 @@ export function FilesView() {
   const activeFiles = useMemo(() => {
     return files.filter((f) => !f.isTrash);
   }, [files]);
+
+  // Derived subfolders for currentFolder
+  const subfolders = useMemo(() => {
+    const folderMap = new Map<string, { itemCount: number; totalSize: number }>();
+    const prefix = currentFolder ? `${currentFolder}/` : '';
+
+    // Files inside current folder structure
+    activeFiles.forEach((f) => {
+      const path = f.relativePath || f.name;
+      if (path.startsWith(prefix)) {
+        const rest = path.slice(prefix.length);
+        const slashIndex = rest.indexOf('/');
+        if (slashIndex > 0) {
+          const subName = rest.slice(0, slashIndex);
+          const current = folderMap.get(subName) || { itemCount: 0, totalSize: 0 };
+          current.itemCount += 1;
+          current.totalSize += f.size;
+          folderMap.set(subName, current);
+        }
+      }
+    });
+
+    // Explicit custom created folders
+    customFolders.forEach((cf) => {
+      if (cf.startsWith(prefix)) {
+        const rest = cf.slice(prefix.length);
+        if (rest && !rest.includes('/')) {
+          if (!folderMap.has(rest)) {
+            folderMap.set(rest, { itemCount: 0, totalSize: 0 });
+          }
+        }
+      }
+    });
+
+    return Array.from(folderMap.entries()).map(([name, data]) => ({
+      name,
+      path: prefix ? `${prefix}${name}` : name,
+      fileCount: data.itemCount,
+      totalSizeBytes: data.totalSize,
+    }));
+  }, [activeFiles, currentFolder, customFolders]);
 
   const filteredFiles = useMemo(() => {
     return activeFiles.filter((f) => {
@@ -48,38 +110,66 @@ export function FilesView() {
         if (!matchName && !matchPath && !matchExt) {
           return false;
         }
+      } else if (selectedCategory === 'all') {
+        // In root/folder view without query, show items in current folder
+        const path = f.relativePath || f.name;
+        const prefix = currentFolder ? `${currentFolder}/` : '';
+        if (prefix) {
+          if (!path.startsWith(prefix)) return false;
+          const rest = path.slice(prefix.length);
+          return !rest.includes('/');
+        } else {
+          return !path.includes('/');
+        }
       }
       return true;
     });
-  }, [activeFiles, selectedCategory, searchQuery]);
+  }, [activeFiles, selectedCategory, searchQuery, currentFolder]);
 
-  const categories: { id: FileType | 'all'; label: string; icon: string }[] = [
-    { id: 'all', label: 'Todos', icon: '📁' },
-    { id: 'image', label: 'Fotos', icon: '📷' },
-    { id: 'pdf', label: 'PDFs', icon: '📄' },
-    { id: 'word', label: 'Docs', icon: '📝' },
-    { id: 'excel', label: 'Excel', icon: '📊' },
-    { id: 'text', label: 'Texto/Código', icon: '💻' },
-    { id: 'other', label: 'Otros', icon: '📦' },
+  const isAllSelected =
+    filteredFiles.length > 0 && filteredFiles.every((f) => selectedFileIds.has(f.id));
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      clearSelection();
+    } else {
+      selectAllFiles(filteredFiles.map((f) => f.id));
+    }
+  };
+
+  const categories: {
+    id: FileType | 'all';
+    label: string;
+    icon: React.ReactNode;
+  }[] = [
+    { id: 'all', label: 'Todos', icon: <Layers className="w-3.5 h-3.5" /> },
+    { id: 'image', label: 'Fotos', icon: <ImageIcon className="w-3.5 h-3.5 text-purple-400" /> },
+    { id: 'pdf', label: 'PDFs', icon: <FileText className="w-3.5 h-3.5 text-rose-400" /> },
+    { id: 'word', label: 'Docs', icon: <FileEdit className="w-3.5 h-3.5 text-blue-400" /> },
+    { id: 'excel', label: 'Excel', icon: <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" /> },
+    { id: 'text', label: 'Código', icon: <FileCode className="w-3.5 h-3.5 text-cyan-400" /> },
+    { id: 'other', label: 'Otros', icon: <Package className="w-3.5 h-3.5 text-amber-400" /> },
   ];
 
   const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      for (let i = 0; i < e.target.files.length; i++) {
-        const file = e.target.files[i];
-        await addUploadedFile(file, file.name);
-      }
+      const items = Array.from(e.target.files).map((file) => {
+        const path = currentFolder ? `${currentFolder}/${file.name}` : file.name;
+        return { file, relativePath: path };
+      });
+      await uploadBatchFiles(items);
       e.target.value = '';
     }
   };
 
   const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      for (let i = 0; i < e.target.files.length; i++) {
-        const file = e.target.files[i];
-        const relativePath = (file as any).webkitRelativePath || file.name;
-        await addUploadedFile(file, relativePath);
-      }
+      const items = Array.from(e.target.files).map((file) => {
+        const rel = (file as any).webkitRelativePath || file.name;
+        const path = currentFolder ? `${currentFolder}/${rel}` : rel;
+        return { file, relativePath: path };
+      });
+      await uploadBatchFiles(items);
       e.target.value = '';
     }
   };
@@ -89,8 +179,14 @@ export function FilesView() {
     e.stopPropagation();
     setDragOverPage(false);
     const items = await extractDroppedItems(e.dataTransfer);
-    for (const item of items) {
-      await addUploadedFile(item.file, item.relativePath);
+    if (items.length > 0) {
+      const mapped = items.map((item) => ({
+        file: item.file,
+        relativePath: currentFolder
+          ? `${currentFolder}/${item.relativePath}`
+          : item.relativePath,
+      }));
+      await uploadBatchFiles(mapped);
     }
   };
 
@@ -142,21 +238,21 @@ export function FilesView() {
 
         <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
-            title="Subir archivos sueltos"
+            onClick={() => setIsCreateFolderOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
+            title="Crear nueva carpeta"
           >
-            <Upload className="w-3.5 h-3.5 text-zinc-300" />
-            <span>Subir</span>
+            <FolderPlus className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Nueva Carpeta</span>
           </button>
 
           <button
             onClick={() => folderInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
             title="Subir carpeta completa con toda su estructura"
           >
             <FolderUp className="w-3.5 h-3.5 text-amber-400" />
-            <span>Carpeta</span>
+            <span>Subir Carpeta</span>
           </button>
 
           <div className="flex items-center bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
@@ -186,15 +282,18 @@ export function FilesView() {
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 active:scale-95 transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 active:scale-95 transition-all cursor-pointer shadow-sm"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span>Subir</span>
+            <span>Subir archivos</span>
           </button>
         </div>
       </div>
 
-      {/* Category Pills Filter */}
+      {/* Breadcrumbs Navigation */}
+      <BreadcrumbsNav />
+
+      {/* Category Pills Filter (Professional Lucide Icons) */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {categories.map((cat) => {
           const isSelected = selectedCategory === cat.id;
@@ -207,7 +306,7 @@ export function FilesView() {
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all active:scale-95 cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all active:scale-95 cursor-pointer ${
                 isSelected
                   ? 'bg-white text-black font-bold shadow-sm'
                   : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-white'
@@ -243,8 +342,54 @@ export function FilesView() {
         </div>
       )}
 
+      {/* Subfolders Section (Google Drive Style) */}
+      {selectedCategory === 'all' && !searchQuery.trim() && subfolders.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+            <Folder className="w-3.5 h-3.5 text-zinc-500" />
+            <span>Carpetas ({subfolders.length})</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {subfolders.map((folder) => (
+              <FolderCard key={folder.path} folder={folder} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Files Section Title and Select All */}
+      <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-bold text-white">
+            {selectedCategory === 'all'
+              ? currentFolder ? `Archivos en ${currentFolder.split('/').pop()}` : 'Archivos'
+              : `${selectedCategory.toUpperCase()}`}
+          </h2>
+
+          {filteredFiles.length > 0 && (
+            <button
+              onClick={handleToggleSelectAll}
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800"
+              title="Seleccionar o deseleccionar todos los archivos visibles"
+            >
+              {isAllSelected ? (
+                <>
+                  <CheckSquare className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Deseleccionar</span>
+                </>
+              ) : (
+                <>
+                  <Square className="w-3.5 h-3.5" />
+                  <span>Seleccionar todo</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Files Display */}
-      {filteredFiles.length === 0 ? (
+      {filteredFiles.length === 0 && subfolders.length === 0 ? (
         <div className="p-10 text-center bg-zinc-950 rounded-2xl border border-dashed border-zinc-850">
           <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-3 text-zinc-500">
             <Filter className="w-6 h-6" />
@@ -255,7 +400,7 @@ export function FilesView() {
           <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
             {searchQuery
               ? `No hay archivos que coincidan con "${searchQuery}".`
-              : 'No hay archivos en esta categoría.'}
+              : 'Esta carpeta se encuentra vacía.'}
           </p>
           {(searchQuery || selectedCategory !== 'all') && (
             <button
@@ -282,6 +427,15 @@ export function FilesView() {
           ))}
         </div>
       )}
+
+      {/* Create Folder Modal */}
+      <CreateFolderModal />
+
+      {/* Floating Batch Action Bar */}
+      <BatchActionBar />
+
+      {/* Floating Live Upload Progress Bar */}
+      <UploadProgressBar />
     </div>
   );
 }

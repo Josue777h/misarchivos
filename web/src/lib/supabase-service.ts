@@ -200,6 +200,31 @@ export async function softDeleteInSupabase(id: string, userId?: string): Promise
   return !error;
 }
 
+export async function batchSoftDeleteInSupabase(ids: string[], userId?: string): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured || ids.length === 0) return false;
+
+  try {
+    let query = supabase
+      .from('files')
+      .update({
+        is_trash: true,
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .in('id', ids);
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { error } = await query;
+    return !error;
+  } catch (err) {
+    console.error('Error batch soft deleting:', err);
+    return false;
+  }
+}
+
 export async function restoreFromTrashInSupabase(id: string, userId?: string): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured) return false;
 
@@ -218,6 +243,31 @@ export async function restoreFromTrashInSupabase(id: string, userId?: string): P
 
   const { error } = await query;
   return !error;
+}
+
+export async function batchRestoreFromTrashInSupabase(ids: string[], userId?: string): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured || ids.length === 0) return false;
+
+  try {
+    let query = supabase
+      .from('files')
+      .update({
+        is_trash: false,
+        deleted_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .in('id', ids);
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { error } = await query;
+    return !error;
+  } catch (err) {
+    console.error('Error batch restoring:', err);
+    return false;
+  }
 }
 
 export async function permanentDeleteInSupabase(
@@ -239,4 +289,34 @@ export async function permanentDeleteInSupabase(
 
   const { error } = await query;
   return !error;
+}
+
+export async function batchPermanentDeleteInSupabase(
+  items: { id: string; storagePath?: string }[],
+  userId?: string
+): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured || items.length === 0) return false;
+
+  try {
+    const storageKeys = items
+      .map((it) => it.storagePath)
+      .filter(Boolean)
+      .map((p) => sanitizeStorageKey(p!));
+
+    if (storageKeys.length > 0) {
+      await supabase.storage.from('misarchivos').remove(storageKeys);
+    }
+
+    const ids = items.map((it) => it.id);
+    let query = supabase.from('files').delete().in('id', ids);
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { error } = await query;
+    return !error;
+  } catch (err) {
+    console.error('Error batch permanently deleting:', err);
+    return false;
+  }
 }

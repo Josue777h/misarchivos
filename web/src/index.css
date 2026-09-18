@@ -82,3 +82,47 @@ div:has(> a[href*="netlify.app"]),
   bottom: -9999px !important;
   z-index: -9999 !important;
 }
+
+/* In-App Office Document Preview Styles */
+.docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+}
+.docx-wrapper > section.docx {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  margin: 1rem auto !important;
+  padding: 2.5rem !important;
+  border-radius: 0.75rem !important;
+  min-height: 100% !important;
+}
+
+.excel-table-container table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.excel-table-container th,
+.excel-table-container td {
+  border: 1px solid #27272a;
+  padding: 6px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+.excel-table-container tr:first-child td,
+.excel-table-container th {
+  background: #18181b;
+  color: #a1a1aa;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+.excel-table-container tr:nth-child(even) {
+  background: rgba(24, 24, 27, 0.4);
+}
+.excel-table-container tr:hover {
+  background: rgba(39, 39, 42, 0.6);
+}
+
