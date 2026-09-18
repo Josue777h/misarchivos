@@ -62,12 +62,14 @@ export function AuthScreen() {
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 selection:bg-zinc-800">
       <div className="w-full max-w-sm flex flex-col items-center">
         {/* Brand Icon */}
-        <div className="mb-6 flex items-center justify-center">
-          <img
-            src="/logo-raw.png"
-            alt="MisArchivos Logo"
-            className="h-20 w-auto object-contain drop-shadow-2xl"
-          />
+        <div className="mb-4 flex items-center justify-center">
+          <div className="w-20 h-20 rounded-3xl bg-zinc-900 border border-zinc-700/80 flex items-center justify-center p-2.5 shadow-2xl">
+            <img
+              src="/logo-cropped.png"
+              alt="MisArchivos Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
         </div>
 
         {/* Title */}

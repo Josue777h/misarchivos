@@ -19,11 +19,16 @@ export function Navbar({ onNavigate }: NavbarProps) {
           onClick={() => onNavigate('home')}
           className="flex items-center gap-2.5 shrink-0 group cursor-pointer"
         >
-          <img
-            src="/logo-raw.png"
-            alt="MisArchivos"
-            className="h-8 w-auto object-contain transition-transform group-hover:scale-105"
-          />
+          <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-700/80 flex items-center justify-center p-1 shadow-sm group-hover:border-zinc-500 transition-all">
+            <img
+              src="/logo-cropped.png"
+              alt="MisArchivos Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <span className="font-bold text-base tracking-tight text-white">
+            MisArchivos
+          </span>
         </button>
 
         {/* Search */}

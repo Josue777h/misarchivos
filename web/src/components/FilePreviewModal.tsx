@@ -96,9 +96,10 @@ export function FilePreviewModal() {
   const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext);
   const isVideo = ['mp4', 'webm', 'mov', 'mkv'].includes(ext);
   // Strictly code/text files, explicitly never office documents
-  const isTextOrCode = previewFile && !isDocx && !isExcel && !isPpt && !isPdf && !isImage && !isAudio && !isVideo
-    ? isTextOrCodeFile(previewFile.name, previewFile.mimeType)
-    : false;
+  const isTextOrCode =
+    previewFile && !isDocx && !isExcel && !isPpt && !isPdf && !isImage && !isAudio && !isVideo
+      ? isTextOrCodeFile(previewFile.name, previewFile.mimeType)
+      : false;
 
   // Fetch text/code file content
   useEffect(() => {
@@ -173,8 +174,8 @@ export function FilePreviewModal() {
       if (isDocx) {
         let renderedWithDocxPreview = false;
 
-        // Try docx-preview if it's .docx
-        if (ext === 'docx' && docxContainerRef.current) {
+        // Try docx-preview with full options
+        if (docxContainerRef.current) {
           try {
             docxContainerRef.current.innerHTML = '';
             await renderAsync(arrayBuffer, docxContainerRef.current, undefined, {
@@ -182,17 +183,26 @@ export function FilePreviewModal() {
               inWrapper: true,
               ignoreWidth: false,
               ignoreHeight: false,
+              renderHeaders: true,
+              renderFooters: true,
+              renderFootnotes: true,
+              renderEndnotes: true,
+              breakPages: true,
+              useBase64URL: true,
               experimental: true,
             });
-            renderedWithDocxPreview = true;
+
+            if (docxContainerRef.current.innerHTML.trim().length > 60) {
+              renderedWithDocxPreview = true;
+            }
           } catch (docxErr) {
-            console.warn('docx-preview failed, falling back to direct XML extraction:', docxErr);
+            console.warn('docx-preview failed, attempting comprehensive XML extraction:', docxErr);
           }
         }
 
         if (isCancelled) return;
 
-        // Resilient fallback: extract text paragraphs directly from word/document.xml
+        // Fallback: extract 100% of all paragraphs and tables directly from word/document.xml
         if (!renderedWithDocxPreview) {
           try {
             const zip = await JSZip.loadAsync(arrayBuffer);
@@ -201,16 +211,21 @@ export function FilePreviewModal() {
               const xml = await docXml.async('text');
               const parser = new DOMParser();
               const xmlDoc = parser.parseFromString(xml, 'application/xml');
-              const paragraphs = Array.from(xmlDoc.getElementsByTagName('w:p'));
-              const lines = paragraphs
-                .map((p) => {
-                  const texts = Array.from(p.getElementsByTagName('w:t'));
-                  return texts.map((t) => t.textContent || '').join('');
-                })
-                .filter((line) => line.trim().length > 0);
 
-              if (lines.length > 0) {
-                setWordParagraphs(lines);
+              // Query all paragraphs using wildcard namespace to catch every single paragraph and table cell
+              const paragraphs = Array.from(xmlDoc.getElementsByTagNameNS('*', 'p'));
+              const allLines: string[] = [];
+
+              paragraphs.forEach((p) => {
+                const textNodes = Array.from(p.getElementsByTagNameNS('*', 't')).map((t) => t.textContent || '');
+                const line = textNodes.join('').trim();
+                if (line.length > 0) {
+                  allLines.push(line);
+                }
+              });
+
+              if (allLines.length > 0) {
+                setWordParagraphs(allLines);
                 setOfficeLoading(false);
                 return;
               }
@@ -272,10 +287,10 @@ export function FilePreviewModal() {
           for (let i = 0; i < slideEntries.length; i++) {
             const xml = await zip.files[slideEntries[i]].async('text');
             const xmlDoc = parser.parseFromString(xml, 'application/xml');
-            const paragraphs = Array.from(xmlDoc.getElementsByTagName('a:p'));
+            const paragraphs = Array.from(xmlDoc.getElementsByTagNameNS('*', 'p'));
             const textLines = paragraphs
               .map((p) => {
-                const texts = Array.from(p.getElementsByTagName('a:t'));
+                const texts = Array.from(p.getElementsByTagNameNS('*', 't'));
                 return texts.map((t) => t.textContent || '').join('');
               })
               .filter((l) => l.trim().length > 0);
@@ -341,14 +356,14 @@ export function FilePreviewModal() {
   return (
     <div
       onClick={() => setPreviewFile(null)}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-150"
     >
       <div
-        className="relative w-full max-w-4xl bg-zinc-950 rounded-3xl shadow-2xl overflow-hidden border border-zinc-800 flex flex-col max-h-[94vh] h-full sm:h-auto"
+        className="relative w-full max-w-5xl bg-zinc-950 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-zinc-800 flex flex-col h-[92vh] max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-zinc-800/80 bg-zinc-900/60">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-zinc-800/80 bg-zinc-900/80 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <FileIconBadge type={previewFile.type} className="w-10 h-10 shrink-0" iconClassName="w-5 h-5" />
             <div className="min-w-0">
@@ -364,7 +379,7 @@ export function FilePreviewModal() {
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => setInfoFile(previewFile)}
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
               title="Ver detalles"
               aria-label="Detalles"
             >
@@ -372,7 +387,7 @@ export function FilePreviewModal() {
             </button>
             <button
               onClick={handleOpenExternal}
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
               title="Abrir en pestaña nueva"
               aria-label="Abrir en pestaña nueva"
             >
@@ -380,7 +395,7 @@ export function FilePreviewModal() {
             </button>
             <button
               onClick={() => setPreviewFile(null)}
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
               aria-label="Cerrar"
             >
               <X className="w-5 h-5" />
@@ -388,81 +403,103 @@ export function FilePreviewModal() {
           </div>
         </div>
 
-        {/* Multi-format In-App Content Viewer Body */}
-        <div className="flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center bg-black min-h-[340px] max-h-[70vh]">
+        {/* Multi-format In-App Content Viewer Body (Full scrollable height without clipping) */}
+        <div className="flex-1 overflow-y-auto flex flex-col bg-zinc-950 min-h-0 relative">
           {/* 1. Image Viewer (High Fidelity) */}
           {isImage && (previewFile.downloadUrl || previewFile.thumbnailUrl) && !imageError ? (
-            <div className="relative max-w-full max-h-full flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center p-4 bg-black">
               <img
                 src={previewFile.downloadUrl || previewFile.thumbnailUrl}
                 alt={previewFile.name}
                 onError={() => setImageError(true)}
-                className="max-h-[62vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+                className="max-h-[75vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
               />
             </div>
           ) : /* 2. In-App Word Document Viewer (.docx, .doc) */
           isDocx ? (
-            <div className="w-full h-full min-h-[60vh] flex flex-col rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900/50">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-xs">
-                <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
+            <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
+              {/* Document Toolbar */}
+              <div className="flex items-center justify-between px-4 sm:px-6 py-2 bg-zinc-900 border-b border-zinc-800 text-xs shrink-0">
+                <span className="font-semibold text-zinc-300 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-blue-400" />
-                  Visor de Word Integrado (.docx)
+                  <span>Documento Word (.docx)</span>
+                  {wordParagraphs.length > 0 && (
+                    <span className="text-zinc-500 font-normal">
+                      ({wordParagraphs.length} párrafos)
+                    </span>
+                  )}
                 </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleDownload}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors text-xs font-bold cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Descargar</span>
-                  </button>
-                </div>
+                <button
+                  onClick={handleDownload}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors text-xs font-bold cursor-pointer shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar Word</span>
+                </button>
               </div>
-              <div className="flex-1 overflow-auto p-4 bg-zinc-950/80">
-                {officeLoading ? (
-                  <div className="flex flex-col items-center justify-center h-56 gap-3 text-zinc-400">
-                    <Loader2 className="w-7 h-7 animate-spin text-blue-400" />
-                    <span>Renderizando páginas del documento Word...</span>
+
+              {/* Document Content Scroll Area */}
+              <div className="flex-1 overflow-y-auto relative min-h-0 bg-[#141416]">
+                {officeLoading && (
+                  <div className="flex flex-col items-center justify-center py-24 gap-3 text-zinc-400">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                    <span className="text-sm font-medium">Cargando páginas del documento...</span>
                   </div>
-                ) : officeError && wordParagraphs.length === 0 ? (
-                  <div className="p-8 text-center text-zinc-400 space-y-3">
-                    <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-                    <p>{officeError}</p>
+                )}
+
+                {officeError && wordParagraphs.length === 0 && !officeLoading && (
+                  <div className="p-12 text-center text-zinc-400 space-y-3">
+                    <AlertCircle className="w-9 h-9 text-rose-400 mx-auto" />
+                    <p className="text-sm">{officeError}</p>
                     <button
                       onClick={handleDownload}
-                      className="px-4 py-2 bg-zinc-800 text-white rounded-xl text-xs font-semibold hover:bg-zinc-700"
+                      className="px-5 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-semibold hover:bg-zinc-700 cursor-pointer"
                     >
                       Descargar archivo para abrir en Word
                     </button>
                   </div>
-                ) : wordParagraphs.length > 0 ? (
-                  /* Fallback clean parsed text paragraphs */
-                  <div className="max-w-2xl mx-auto bg-white text-zinc-900 p-8 sm:p-12 rounded-xl shadow-2xl space-y-4 font-serif text-sm sm:text-base leading-relaxed select-text">
-                    {wordParagraphs.map((paragraph, idx) => (
-                      <p key={idx} className="text-justify">
-                        {paragraph}
-                      </p>
-                    ))}
+                )}
+
+                {/* docx-preview container: ALWAYS mounted in DOM so ref is permanently valid */}
+                <div
+                  ref={docxContainerRef}
+                  className={`w-full min-h-full ${
+                    officeLoading || wordParagraphs.length > 0 || (officeError && wordParagraphs.length === 0)
+                      ? 'hidden'
+                      : 'block'
+                  }`}
+                />
+
+                {/* Comprehensive Fallback: full document rendered with 100% extracted paragraphs */}
+                {wordParagraphs.length > 0 && !officeLoading && (
+                  <div className="w-full bg-[#141416] p-4 sm:p-10 flex justify-center min-h-full">
+                    <div className="w-full max-w-4xl bg-white text-zinc-900 p-8 sm:p-14 rounded-lg shadow-2xl space-y-4 font-sans text-sm sm:text-base leading-relaxed select-text border border-zinc-200">
+                      <div className="border-b border-zinc-200 pb-3 mb-6">
+                        <h2 className="text-lg sm:text-xl font-bold text-zinc-900">{previewFile.name}</h2>
+                      </div>
+                      {wordParagraphs.map((paragraph, idx) => (
+                        <p key={idx} className="text-zinc-800 leading-relaxed text-justify">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  /* Rich rendered document via docx-preview */
-                  <div ref={docxContainerRef} className="max-w-4xl mx-auto" />
                 )}
               </div>
             </div>
           ) : /* 3. In-App Excel Sheet Viewer (.xlsx, .xls, .csv) */
           isExcel ? (
-            <div className="w-full h-full min-h-[60vh] flex flex-col rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900/50">
-              <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800 text-xs gap-2 flex-wrap">
+            <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
+              <div className="flex items-center justify-between px-4 sm:px-6 py-2 bg-zinc-900 border-b border-zinc-800 text-xs gap-2 flex-wrap shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
                     <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                    Visor de Hojas de Cálculo
+                    Hoja de Cálculo
                   </span>
                 </div>
                 {/* Sheet Tabs */}
                 {excelSheets.length > 0 && (
-                  <div className="flex items-center gap-1 overflow-x-auto max-w-sm py-0.5">
+                  <div className="flex items-center gap-1 overflow-x-auto max-w-md py-0.5">
                     {excelSheets.map((sheet, index) => (
                       <button
                         key={sheet.name}
@@ -480,25 +517,26 @@ export function FilePreviewModal() {
                 )}
                 <button
                   onClick={handleDownload}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors text-xs font-bold cursor-pointer"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors text-xs font-bold cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Descargar</span>
                 </button>
               </div>
-              <div className="flex-1 overflow-auto bg-zinc-950">
+
+              <div className="flex-1 overflow-auto bg-zinc-950 p-2 sm:p-4 min-h-0">
                 {officeLoading ? (
-                  <div className="flex flex-col items-center justify-center h-56 gap-3 text-zinc-400">
-                    <Loader2 className="w-7 h-7 animate-spin text-emerald-400" />
-                    <span>Generando tablas de la hoja de cálculo...</span>
+                  <div className="flex flex-col items-center justify-center py-24 gap-3 text-zinc-400">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                    <span className="text-sm font-medium">Generando tablas de la hoja de cálculo...</span>
                   </div>
                 ) : officeError ? (
-                  <div className="p-8 text-center text-zinc-400 space-y-3">
-                    <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-                    <p>{officeError}</p>
+                  <div className="p-12 text-center text-zinc-400 space-y-3">
+                    <AlertCircle className="w-9 h-9 text-rose-400 mx-auto" />
+                    <p className="text-sm">{officeError}</p>
                     <button
                       onClick={handleDownload}
-                      className="px-4 py-2 bg-zinc-800 text-white rounded-xl text-xs font-semibold hover:bg-zinc-700"
+                      className="px-5 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-semibold hover:bg-zinc-700 cursor-pointer"
                     >
                       Descargar archivo para abrir en Excel
                     </button>
@@ -506,10 +544,10 @@ export function FilePreviewModal() {
                 ) : excelSheets.length > 0 && excelSheets[activeSheetIndex] ? (
                   <div
                     dangerouslySetInnerHTML={{ __html: excelSheets[activeSheetIndex].html }}
-                    className="excel-table-container p-4 overflow-auto max-h-[58vh]"
+                    className="excel-table-container overflow-auto w-full"
                   />
                 ) : (
-                  <div className="p-8 text-center text-zinc-500">
+                  <div className="p-12 text-center text-zinc-500">
                     <p>No se encontraron datos tabulares en este archivo.</p>
                   </div>
                 )}
@@ -517,33 +555,33 @@ export function FilePreviewModal() {
             </div>
           ) : /* 4. In-App PowerPoint Slide Viewer (.pptx) */
           isPpt ? (
-            <div className="w-full h-full min-h-[60vh] flex flex-col rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900/50">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-xs">
+            <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
+              <div className="flex items-center justify-between px-4 sm:px-6 py-2 bg-zinc-900 border-b border-zinc-800 text-xs shrink-0">
                 <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
                   <Presentation className="w-4 h-4 text-amber-400" />
-                  Visor de Presentación PowerPoint (.pptx)
+                  Presentación PowerPoint (.pptx)
                 </span>
                 <button
                   onClick={handleDownload}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors text-xs font-bold cursor-pointer"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors text-xs font-bold cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Descargar</span>
                 </button>
               </div>
-              <div className="flex-1 overflow-auto p-4 bg-zinc-950">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-zinc-950 min-h-0">
                 {officeLoading ? (
-                  <div className="flex flex-col items-center justify-center h-56 gap-3 text-zinc-400">
-                    <Loader2 className="w-7 h-7 animate-spin text-amber-400" />
-                    <span>Extrayendo diapositivas de la presentación...</span>
+                  <div className="flex flex-col items-center justify-center py-24 gap-3 text-zinc-400">
+                    <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+                    <span className="text-sm font-medium">Extrayendo diapositivas de la presentación...</span>
                   </div>
                 ) : officeError ? (
-                  <div className="p-8 text-center text-zinc-400 space-y-3">
-                    <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-                    <p>{officeError}</p>
+                  <div className="p-12 text-center text-zinc-400 space-y-3">
+                    <AlertCircle className="w-9 h-9 text-rose-400 mx-auto" />
+                    <p className="text-sm">{officeError}</p>
                     <button
                       onClick={handleDownload}
-                      className="px-4 py-2 bg-zinc-800 text-white rounded-xl text-xs font-semibold hover:bg-zinc-700"
+                      className="px-5 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-semibold hover:bg-zinc-700 cursor-pointer"
                     >
                       Descargar archivo para abrir en PowerPoint
                     </button>
@@ -559,20 +597,16 @@ export function FilePreviewModal() {
                           <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-zinc-800 text-amber-400 font-bold">
                             Diapositiva {slide.slideNumber}
                           </span>
-                          <h4 className="text-sm font-bold text-white mt-2 mb-2">
-                            {slide.title}
-                          </h4>
+                          <h4 className="text-sm font-bold text-white mt-2 mb-2">{slide.title}</h4>
                           {slide.lines.length > 0 && (
                             <ul className="text-xs text-zinc-300 space-y-1 list-disc list-inside mt-2">
-                              {slide.lines.slice(0, 6).map((line, lIdx) => (
+                              {slide.lines.slice(0, 8).map((line, lIdx) => (
                                 <li key={lIdx} className="leading-relaxed">
                                   {line}
                                 </li>
                               ))}
-                              {slide.lines.length > 6 && (
-                                <li className="text-zinc-500 italic">
-                                  +{slide.lines.length - 6} puntos más...
-                                </li>
+                              {slide.lines.length > 8 && (
+                                <li className="text-zinc-500 italic">+{slide.lines.length - 8} puntos más...</li>
                               )}
                             </ul>
                           )}
@@ -585,15 +619,15 @@ export function FilePreviewModal() {
             </div>
           ) : /* 5. Native In-App PDF Reader */
           isPdf && previewFile.downloadUrl ? (
-            <div className="w-full h-full min-h-[55vh] flex flex-col rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900/50">
-              <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800 text-xs">
+            <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
+              <div className="flex items-center justify-between px-4 sm:px-6 py-2 bg-zinc-900 border-b border-zinc-800 text-xs shrink-0">
                 <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-rose-400" />
                   Visor de PDF Integrado
                 </span>
                 <button
                   onClick={handleOpenExternal}
-                  className="text-zinc-400 hover:text-white flex items-center gap-1 hover:underline"
+                  className="text-zinc-400 hover:text-white flex items-center gap-1 hover:underline cursor-pointer"
                 >
                   <span>Pantalla completa</span>
                   <ExternalLink className="w-3 h-3" />
@@ -601,32 +635,33 @@ export function FilePreviewModal() {
               </div>
               <iframe
                 src={`${previewFile.downloadUrl}#toolbar=1&navpanes=0`}
-                className="w-full flex-1 min-h-[50vh] border-0"
+                className="w-full flex-1 border-0 min-h-0"
                 title={previewFile.name}
               />
             </div>
           ) : /* 6. In-App Video Player */
           isVideo && previewFile.downloadUrl ? (
-            <div className="max-w-full max-h-full flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center p-4 bg-black">
               <video
                 controls
                 autoPlay={false}
                 src={previewFile.downloadUrl}
-                className="max-h-[58vh] max-w-full rounded-2xl shadow-lg border border-zinc-800"
+                className="max-h-[75vh] max-w-full rounded-2xl shadow-lg border border-zinc-800"
               />
             </div>
           ) : /* 7. In-App Audio Player */
           isAudio && previewFile.downloadUrl ? (
-            <div className="text-center p-8 max-w-md w-full space-y-4 bg-zinc-900/60 rounded-3xl border border-zinc-800">
-              <FileIconBadge type="other" className="w-16 h-16 mx-auto shadow-md" iconClassName="w-8 h-8" />
-              <h4 className="font-bold text-white text-base truncate">{previewFile.name}</h4>
-              <audio controls src={previewFile.downloadUrl} className="w-full mt-2" />
+            <div className="flex-1 flex items-center justify-center p-8 bg-zinc-950">
+              <div className="text-center p-8 max-w-md w-full space-y-4 bg-zinc-900/60 rounded-3xl border border-zinc-800">
+                <FileIconBadge type="other" className="w-16 h-16 mx-auto shadow-md" iconClassName="w-8 h-8" />
+                <h4 className="font-bold text-white text-base truncate">{previewFile.name}</h4>
+                <audio controls src={previewFile.downloadUrl} className="w-full mt-2" />
+              </div>
             </div>
-          ) : /* 8. In-App Text / Code Viewer (HTML, CSS, JS, TS, Python, JSON, TXT, TLS, configs, etc.) */
+          ) : /* 8. In-App Text / Code Viewer */
           isTextOrCode ? (
-            <div className="w-full h-full min-h-[50vh] flex flex-col rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950">
-              {/* Code Viewer Subheader */}
-              <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-xs">
+            <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-xs shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-cyan-400 font-mono font-bold text-[11px] uppercase">
                     {previewFile.extension || 'TEXTO'}
@@ -665,22 +700,19 @@ export function FilePreviewModal() {
                 </div>
               </div>
 
-              {/* Code / Text Body */}
-              <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed select-text text-zinc-300">
+              <div className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed select-text text-zinc-300 min-h-0">
                 {loadingText ? (
-                  <div className="flex flex-col items-center justify-center h-48 gap-3 text-zinc-400">
+                  <div className="flex flex-col items-center justify-center py-20 gap-3 text-zinc-400">
                     <Loader2 className="w-6 h-6 animate-spin text-white" />
                     <span>Leyendo contenido del archivo...</span>
                   </div>
                 ) : textContent !== null ? (
                   <div className="flex gap-4">
-                    {/* Line numbers */}
                     <div className="select-none text-zinc-600 text-right font-mono pr-2 border-r border-zinc-850">
                       {lines.map((_, i) => (
                         <div key={i}>{i + 1}</div>
                       ))}
                     </div>
-                    {/* Text / Code Content */}
                     <pre className="flex-1 whitespace-pre overflow-x-auto font-mono text-zinc-200">
                       {textContent}
                     </pre>
@@ -699,69 +731,66 @@ export function FilePreviewModal() {
               </div>
             </div>
           ) : (
-            /* 9. Other Binary / Generic Files Inspection Panel */
-            <div className="w-full max-w-lg bg-zinc-900/80 rounded-2xl border border-zinc-800 p-6 space-y-4 shadow-xl text-center">
-              <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-800/80 border border-zinc-700/80 flex items-center justify-center shadow-md">
-                <FileIconBadge
-                  type={previewFile.type}
-                  className="w-14 h-14"
-                  iconClassName="w-7 h-7"
-                />
-              </div>
+            /* 9. Other Binary / Generic Files */
+            <div className="flex-1 flex items-center justify-center p-6 bg-zinc-950">
+              <div className="w-full max-w-lg bg-zinc-900/80 rounded-2xl border border-zinc-800 p-6 space-y-4 shadow-xl text-center">
+                <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-800/80 border border-zinc-700/80 flex items-center justify-center shadow-md">
+                  <FileIconBadge type={previewFile.type} className="w-14 h-14" iconClassName="w-7 h-7" />
+                </div>
 
-              <div>
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-[11px] font-semibold uppercase mb-1">
-                  {`Archivo ${previewFile.extension.toUpperCase() || 'Binario'}`}
-                </span>
-                <h4 className="font-bold text-white text-base truncate px-2" title={previewFile.name}>
-                  {previewFile.name}
-                </h4>
-                <p className="text-xs text-zinc-400 mt-0.5 font-mono">
-                  {previewFile.relativePath || previewFile.name}
-                </p>
-              </div>
-
-              {/* Specification Grid */}
-              <div className="grid grid-cols-2 gap-2 text-left bg-zinc-950/70 p-3 rounded-xl border border-zinc-850 text-xs">
                 <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Tamaño</span>
-                  <span className="font-mono text-zinc-200 font-bold">{formatFileSize(previewFile.size)}</span>
-                </div>
-                <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Modificado</span>
-                  <span className="text-zinc-200">{formatDate(previewFile.updatedAt)}</span>
-                </div>
-                <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Formato</span>
-                  <span className="font-mono text-zinc-200">.{previewFile.extension || 'bin'}</span>
-                </div>
-                <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Tipo MIME</span>
-                  <span className="font-mono text-zinc-200 truncate block" title={previewFile.mimeType}>
-                    {previewFile.mimeType}
+                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-[11px] font-semibold uppercase mb-1">
+                    {`Archivo ${previewFile.extension.toUpperCase() || 'Binario'}`}
                   </span>
+                  <h4 className="font-bold text-white text-base truncate px-2" title={previewFile.name}>
+                    {previewFile.name}
+                  </h4>
+                  <p className="text-xs text-zinc-400 mt-0.5 font-mono">
+                    {previewFile.relativePath || previewFile.name}
+                  </p>
                 </div>
-              </div>
 
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Este archivo se encuentra seguro en tu almacenamiento. Puedes verificar sus especificaciones y descargarlo para abrirlo en tu dispositivo.
-              </p>
+                <div className="grid grid-cols-2 gap-2 text-left bg-zinc-950/70 p-3 rounded-xl border border-zinc-850 text-xs">
+                  <div>
+                    <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Tamaño</span>
+                    <span className="font-mono text-zinc-200 font-bold">{formatFileSize(previewFile.size)}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Modificado</span>
+                    <span className="text-zinc-200">{formatDate(previewFile.updatedAt)}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Formato</span>
+                    <span className="font-mono text-zinc-200">.{previewFile.extension || 'bin'}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Tipo MIME</span>
+                    <span className="font-mono text-zinc-200 truncate block" title={previewFile.mimeType}>
+                      {previewFile.mimeType}
+                    </span>
+                  </div>
+                </div>
 
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
-                <button
-                  onClick={handleDownload}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-white text-black hover:bg-zinc-200 shadow-md active:scale-95 transition-all cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Descargar archivo ({formatFileSize(previewFile.size)})</span>
-                </button>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Este archivo se encuentra seguro en tu almacenamiento. Puedes descargarlo para abrirlo en tu dispositivo.
+                </p>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                  <button
+                    onClick={handleDownload}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-white text-black hover:bg-zinc-200 shadow-md active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Descargar archivo ({formatFileSize(previewFile.size)})</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-zinc-800/80 bg-zinc-900/80 flex-wrap gap-2">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-zinc-800/80 bg-zinc-900/80 shrink-0 flex-wrap gap-2">
           <div className="text-xs text-zinc-400 truncate max-w-[140px] sm:max-w-xs font-mono">
             {previewFile.relativePath || previewFile.name}
           </div>

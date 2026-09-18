@@ -89,17 +89,30 @@ div:has(> a[href*="netlify.app"]),
 
 /* In-App Office Document Preview Styles */
 .docx-wrapper {
-  background: transparent !important;
-  padding: 0 !important;
+  background: #141416 !important;
+  padding: 24px 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 24px !important;
+  min-height: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 .docx-wrapper > section.docx {
   background: #ffffff !important;
-  color: #1a1a1a !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
-  margin: 1rem auto !important;
-  padding: 2.5rem !important;
-  border-radius: 0.75rem !important;
-  min-height: 100% !important;
+  color: #111827 !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6) !important;
+  margin: 0 auto !important;
+  padding: 48px 56px !important;
+  border-radius: 4px !important;
+  width: 100% !important;
+  max-width: 820px !important;
+  min-height: auto !important;
+  box-sizing: border-box !important;
+}
+.docx-wrapper > section.docx * {
+  color: inherit;
 }
 
 .excel-table-container table {
