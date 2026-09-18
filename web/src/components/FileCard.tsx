@@ -64,8 +64,8 @@ export function FileCard({ file }: Props) {
           onClick={(e) => { e.stopPropagation(); toggleFileSelection(file.id); }}
           className={`absolute top-2 left-2 z-10 w-5 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer ${
             isSelected
-              ? 'bg-emerald-500 text-white shadow-md'
-              : 'bg-black/60 backdrop-blur-sm border border-zinc-600 opacity-0 group-hover:opacity-100 hover:border-white'
+              ? 'bg-emerald-500 text-white shadow-md opacity-100'
+              : 'bg-black/60 backdrop-blur-sm border border-zinc-600 opacity-60 sm:opacity-0 group-hover:opacity-100 hover:border-white'
           }`}
         >
           {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}

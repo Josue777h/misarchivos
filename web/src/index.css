@@ -143,3 +143,37 @@ div:has(> a[href*="netlify.app"]),
   background: rgba(39, 39, 42, 0.6);
 }
 
+/* Mobile Responsiveness Optimizations (< 640px) */
+@media (max-width: 640px) {
+  .docx-wrapper {
+    padding: 8px 4px !important;
+    gap: 12px !important;
+    background: #09090b !important;
+  }
+  .docx-wrapper > section.docx {
+    padding: 20px 14px !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+  .excel-table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+  .excel-table-container table {
+    font-size: 11px;
+  }
+  .excel-table-container th,
+  .excel-table-container td {
+    padding: 4px 8px;
+  }
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+

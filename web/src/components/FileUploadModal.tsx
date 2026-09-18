@@ -101,23 +101,23 @@ export function FileUploadModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-lg bg-zinc-950 rounded-3xl shadow-2xl overflow-hidden border border-zinc-800 flex flex-col"
+        className="relative w-full max-w-lg bg-zinc-950 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-zinc-800 flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-zinc-900/60">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 sm:py-4 border-b border-zinc-800 bg-zinc-900/60 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center shrink-0">
               <UploadCloud className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="font-bold text-white text-base leading-tight">
+            <div className="min-w-0">
+              <h3 className="font-bold text-white text-sm sm:text-base leading-tight truncate">
                 Subir Archivos y Carpetas
               </h3>
-              <p className="text-[11px] text-zinc-400 font-mono">
-                HTML, CSS, Código, Word, Excel, TXT, TLS, Fotos, etc.
+              <p className="text-[10px] sm:text-[11px] text-zinc-400 font-mono truncate">
+                Word, Excel, Fotos, Código, etc.
               </p>
             </div>
           </div>
@@ -126,14 +126,14 @@ export function FileUploadModal() {
               if (!uploading) setIsUploadModalOpen(false);
             }}
             disabled={uploading}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-5 space-y-4">
+        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
           {/* Subfolder selector */}
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1.5 flex items-center gap-1.5">

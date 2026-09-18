@@ -356,21 +356,21 @@ export function FilePreviewModal() {
   return (
     <div
       onClick={() => setPreviewFile(null)}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-150"
     >
       <div
-        className="relative w-full max-w-5xl bg-zinc-950 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-zinc-800 flex flex-col h-[92vh] max-h-[92vh]"
+        className="relative w-full max-w-5xl bg-zinc-950 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden border-0 sm:border sm:border-zinc-800 flex flex-col h-full sm:h-[92vh] max-h-full sm:max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-zinc-800/80 bg-zinc-900/80 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <FileIconBadge type={previewFile.type} className="w-10 h-10 shrink-0" iconClassName="w-5 h-5" />
-            <div className="min-w-0">
-              <h3 className="font-bold text-white truncate text-sm sm:text-base" title={previewFile.name}>
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-zinc-800/80 bg-zinc-900/80 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 mr-2">
+            <FileIconBadge type={previewFile.type} className="w-8 h-8 sm:w-10 sm:h-10 shrink-0" iconClassName="w-4 h-4 sm:w-5 sm:h-5" />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-white truncate text-xs sm:text-base max-w-[200px] sm:max-w-md" title={previewFile.name}>
                 {previewFile.name}
               </h3>
-              <p className="text-[11px] text-zinc-400 truncate mt-0.5 font-mono">
+              <p className="text-[10px] sm:text-[11px] text-zinc-400 truncate mt-0.5 font-mono">
                 {formatFileSize(previewFile.size)} • {formatDate(previewFile.updatedAt)}
               </p>
             </div>
@@ -790,27 +790,27 @@ export function FilePreviewModal() {
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-zinc-800/80 bg-zinc-900/80 shrink-0 flex-wrap gap-2">
-          <div className="text-xs text-zinc-400 truncate max-w-[140px] sm:max-w-xs font-mono">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-t border-zinc-800/80 bg-zinc-900/80 shrink-0 gap-2 pb-safe">
+          <div className="text-xs text-zinc-400 truncate max-w-[120px] sm:max-w-xs font-mono hidden sm:block">
             {previewFile.relativePath || previewFile.name}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={() => {
                 moveToTrash(previewFile.id);
                 setPreviewFile(null);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-950/40 border border-rose-900/60 transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-950/40 border border-rose-900/60 transition-all active:scale-95 cursor-pointer"
               title="Mover a papelera"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Eliminar</span>
+              <span className="hidden xs:inline sm:inline">Eliminar</span>
             </button>
 
             <button
               onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-zinc-700 bg-zinc-800/80 hover:bg-zinc-800 text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold border border-zinc-700 bg-zinc-800/80 hover:bg-zinc-800 text-white transition-colors cursor-pointer"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>Compartir</span>
@@ -818,7 +818,7 @@ export function FilePreviewModal() {
 
             <button
               onClick={handleDownload}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 shadow-sm transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 shadow-sm transition-all active:scale-95 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Descargar</span>

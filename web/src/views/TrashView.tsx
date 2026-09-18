@@ -103,24 +103,24 @@ export function TrashView() {
 
       {/* Batch action bar */}
       {selectedCount > 0 && (
-        <div className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-700/60 rounded-2xl animate-in slide-in-from-bottom-2 duration-150">
-          <span className="text-xs font-semibold text-white">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3 bg-zinc-900 border border-zinc-700/60 rounded-2xl animate-in slide-in-from-bottom-2 duration-150 gap-2.5">
+          <span className="text-xs font-semibold text-white text-center sm:text-left">
             {selectedCount} {selectedCount === 1 ? 'elemento seleccionado' : 'elementos seleccionados'}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 justify-center sm:justify-end flex-wrap">
             <button
               onClick={handleBatchRestore}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all active:scale-95 cursor-pointer"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all active:scale-95 cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Restaurar</span>
             </button>
             <button
               onClick={handleBatchDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white transition-all active:scale-95 cursor-pointer"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white transition-all active:scale-95 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Eliminar definitivamente</span>
+              <span className="truncate">Eliminar definitivamente</span>
             </button>
             <button
               onClick={() => setSelectedIds(new Set())}

@@ -78,7 +78,7 @@ export function BreadcrumbsNav() {
         title="Crear nueva carpeta en esta ubicación"
       >
         <FolderPlus className="w-3.5 h-3.5" />
-        <span>Nueva Carpeta</span>
+        <span className="hidden sm:inline">Nueva Carpeta</span>
       </button>
     </div>
   );

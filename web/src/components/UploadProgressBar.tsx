@@ -12,8 +12,8 @@ export function UploadProgressBar() {
   const percentage = Math.round((uploadProgress.completed / Math.max(uploadProgress.total, 1)) * 100);
 
   return (
-    <div className="fixed top-5 right-5 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
-      <div className="glass px-4 py-3 rounded-2xl border border-zinc-700/80 shadow-2xl bg-zinc-950/95 backdrop-blur-xl text-white max-w-sm w-80 space-y-2">
+    <div className="fixed top-4 left-3 right-3 sm:left-auto sm:right-5 sm:w-80 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
+      <div className="glass px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl border border-zinc-700/80 shadow-2xl bg-zinc-950/95 backdrop-blur-xl text-white w-full space-y-2">
         <div className="flex items-center justify-between text-xs font-semibold">
           <div className="flex items-center gap-2">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />

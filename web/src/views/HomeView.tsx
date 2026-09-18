@@ -255,46 +255,46 @@ export function HomeView({ onNavigate }: HomeViewProps) {
       />
 
       {/* Action Bar */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-100 active:scale-95 transition-all cursor-pointer shadow-sm"
+          className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm hover:bg-zinc-100 active:scale-95 transition-all cursor-pointer shadow-sm"
         >
-          <Upload className="w-4 h-4 shrink-0" />
+          <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
           <span>Subir archivos</span>
         </button>
 
         <button
           onClick={() => setIsCreateFolderOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-white font-semibold text-sm active:scale-95 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-white font-semibold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer"
         >
-          <FolderPlus className="w-4 h-4 text-zinc-400 shrink-0" />
+          <FolderPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-400 shrink-0" />
           <span>Nueva carpeta</span>
         </button>
 
         <button
           onClick={() => folderInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 font-semibold text-sm active:scale-95 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 font-semibold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer"
           title="Subir carpeta completa"
         >
-          <FolderUp className="w-4 h-4 text-zinc-500 shrink-0" />
+          <FolderUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-500 shrink-0" />
           <span className="hidden sm:inline">Subir carpeta</span>
         </button>
 
         <button
           onClick={() => cameraInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 font-medium text-sm active:scale-95 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 font-medium text-xs sm:text-sm active:scale-95 transition-all cursor-pointer"
           title="Cámara"
         >
-          <Camera className="w-4 h-4 shrink-0" />
+          <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
         </button>
 
         <button
           onClick={handleSyncClick}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 font-medium text-sm active:scale-95 transition-all cursor-pointer ml-auto"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 font-medium text-xs sm:text-sm active:scale-95 transition-all cursor-pointer ml-auto"
           title="Actualizar"
         >
-          <RefreshCw className={`w-4 h-4 shrink-0 ${isSyncingLocal ? 'animate-spin text-white' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${isSyncingLocal ? 'animate-spin text-white' : ''}`} />
         </button>
       </div>
 

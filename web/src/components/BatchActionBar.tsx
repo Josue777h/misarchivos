@@ -32,12 +32,12 @@ export function BatchActionBar() {
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[92vw] animate-in fade-in slide-in-from-bottom-5 duration-200">
-      <div className="glass px-4 py-2.5 rounded-2xl border border-zinc-700/80 shadow-2xl flex items-center gap-3 bg-zinc-900/95 backdrop-blur-xl text-white">
-        <div className="flex items-center gap-2 pr-2 border-r border-zinc-700 text-xs font-semibold">
+    <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[95vw] animate-in fade-in slide-in-from-bottom-5 duration-200">
+      <div className="glass px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl border border-zinc-700/80 shadow-2xl flex items-center gap-2 sm:gap-3 bg-zinc-900/95 backdrop-blur-xl text-white">
+        <div className="flex items-center gap-1.5 sm:gap-2 pr-2 border-r border-zinc-700 text-xs font-semibold shrink-0">
           <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>
-            {selectedCount} {selectedCount === 1 ? 'seleccionado' : 'seleccionados'}
+            {selectedCount} <span className="hidden xs:inline sm:inline">{selectedCount === 1 ? 'seleccionado' : 'seleccionados'}</span>
           </span>
         </div>
 

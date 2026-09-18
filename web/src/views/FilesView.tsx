@@ -236,10 +236,10 @@ export function FilesView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 self-stretch sm:self-auto justify-between sm:justify-start flex-wrap">
           <button
             onClick={() => setIsCreateFolderOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
             title="Crear nueva carpeta"
           >
             <FolderPlus className="w-3.5 h-3.5 text-indigo-400" />
@@ -248,11 +248,11 @@ export function FilesView() {
 
           <button
             onClick={() => folderInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer"
             title="Subir carpeta completa con toda su estructura"
           >
             <FolderUp className="w-3.5 h-3.5 text-amber-400" />
-            <span>Subir Carpeta</span>
+            <span className="hidden xs:inline sm:inline">Subir Carpeta</span>
           </button>
 
           <div className="flex items-center bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
@@ -282,10 +282,10 @@ export function FilesView() {
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 active:scale-95 transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 active:scale-95 transition-all cursor-pointer shadow-sm ml-auto sm:ml-0"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span>Subir archivos</span>
+            <span>Subir</span>
           </button>
         </div>
       </div>
