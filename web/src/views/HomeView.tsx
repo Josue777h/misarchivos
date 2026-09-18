@@ -1,6 +1,5 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { useFiles } from '../context/FileContext';
-import { useAuth } from '../context/AuthContext';
 import { FileCard } from '../components/FileCard';
 import { FileListItem } from '../components/FileListItem';
 import { FolderCard } from '../components/FolderCard';
@@ -45,7 +44,6 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     searchQuery,
     triggerManualSync,
     uploadBatchFiles,
-    stats,
     currentFolder,
     customFolders,
     selectedFileIds,
@@ -54,7 +52,6 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     setIsCreateFolderOpen,
   } = useFiles();
 
-  const { user } = useAuth();
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
   const [dragOverPage, setDragOverPage] = useState(false);
 
@@ -257,65 +254,48 @@ export function HomeView({ onNavigate }: HomeViewProps) {
         className="hidden"
       />
 
-      {/* Hero Action Bar */}
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold text-zinc-300">
-              {user?.email ? user.email.split('@')[0] : 'Mis Archivos'}
-            </span>
-          </div>
-          <span className="text-xs text-zinc-400 font-mono">
-            {stats.totalFiles} archivos ({activeFiles.length > 0 ? (activeFiles.reduce((a, b) => a + b.size, 0) / (1024 * 1024)).toFixed(1) : 0} MB)
-          </span>
-        </div>
+      {/* Action Bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-100 active:scale-95 transition-all cursor-pointer shadow-sm"
+        >
+          <Upload className="w-4 h-4 shrink-0" />
+          <span>Subir archivos</span>
+        </button>
 
-        {/* 1-Click Action Buttons */}
-        <div className="grid grid-cols-2 sm:flex sm:items-center sm:gap-3 gap-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white text-black font-bold text-xs sm:text-sm hover:bg-zinc-200 active:scale-95 transition-all text-center cursor-pointer shadow-sm"
-            title="Subir archivos sueltos"
-          >
-            <Upload className="w-4 h-4 text-black shrink-0" />
-            <span>Subir archivos</span>
-          </button>
+        <button
+          onClick={() => setIsCreateFolderOpen(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-white font-semibold text-sm active:scale-95 transition-all cursor-pointer"
+        >
+          <FolderPlus className="w-4 h-4 text-zinc-400 shrink-0" />
+          <span>Nueva carpeta</span>
+        </button>
 
-          <button
-            onClick={() => setIsCreateFolderOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs sm:text-sm active:scale-95 transition-all text-center cursor-pointer"
-            title="Crear nueva carpeta aquí"
-          >
-            <FolderPlus className="w-4 h-4 text-indigo-400 shrink-0" />
-            <span>Nueva Carpeta</span>
-          </button>
+        <button
+          onClick={() => folderInputRef.current?.click()}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 font-semibold text-sm active:scale-95 transition-all cursor-pointer"
+          title="Subir carpeta completa"
+        >
+          <FolderUp className="w-4 h-4 text-zinc-500 shrink-0" />
+          <span className="hidden sm:inline">Subir carpeta</span>
+        </button>
 
-          <button
-            onClick={() => folderInputRef.current?.click()}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs sm:text-sm active:scale-95 transition-all text-center cursor-pointer"
-            title="Subir carpeta completa con toda su estructura"
-          >
-            <FolderUp className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Subir Carpeta</span>
-          </button>
+        <button
+          onClick={() => cameraInputRef.current?.click()}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 font-medium text-sm active:scale-95 transition-all cursor-pointer"
+          title="Cámara"
+        >
+          <Camera className="w-4 h-4 shrink-0" />
+        </button>
 
-          <button
-            onClick={() => cameraInputRef.current?.click()}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs sm:text-sm active:scale-95 transition-all text-center cursor-pointer"
-          >
-            <Camera className="w-4 h-4 text-zinc-300 shrink-0" />
-            <span>Foto</span>
-          </button>
-
-          <button
-            onClick={handleSyncClick}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-semibold text-xs sm:text-sm active:scale-95 transition-all text-center cursor-pointer ml-auto"
-          >
-            <RefreshCw className={`w-4 h-4 shrink-0 ${isSyncingLocal ? 'animate-spin text-white' : ''}`} />
-            <span>{isSyncingLocal ? 'Listo' : 'Actualizar'}</span>
-          </button>
-        </div>
+        <button
+          onClick={handleSyncClick}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 font-medium text-sm active:scale-95 transition-all cursor-pointer ml-auto"
+          title="Actualizar"
+        >
+          <RefreshCw className={`w-4 h-4 shrink-0 ${isSyncingLocal ? 'animate-spin text-white' : ''}`} />
+        </button>
       </div>
 
       {/* Breadcrumbs Navigation */}
@@ -371,65 +351,56 @@ export function HomeView({ onNavigate }: HomeViewProps) {
         </div>
       )}
 
-      {/* Section Header with count, select all, and view mode toggle */}
-      <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Folder className="w-4 h-4 text-zinc-400" />
-            <h2 className="text-sm sm:text-base font-bold text-white">
-              {selectedCategory === 'all'
-                ? currentFolder ? `Archivos en ${currentFolder.split('/').pop()}` : 'Archivos'
-                : `${selectedCategory.toUpperCase()}`}
-            </h2>
-            <span className="text-xs text-zinc-500 font-mono">
-              ({filteredFiles.length})
-            </span>
-          </div>
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-zinc-300">
+            {selectedCategory === 'all'
+              ? currentFolder ? currentFolder.split('/').pop() : 'Archivos'
+              : selectedCategory === 'image' ? 'Imágenes'
+              : selectedCategory === 'word' ? 'Documentos'
+              : selectedCategory === 'excel' ? 'Hojas de cálculo'
+              : selectedCategory === 'pdf' ? 'PDFs'
+              : selectedCategory === 'text' ? 'Código y texto'
+              : 'Otros'}
+          </h2>
+          <span className="text-[11px] text-zinc-600 font-mono">({filteredFiles.length})</span>
+        </div>
 
+        <div className="flex items-center gap-2">
           {filteredFiles.length > 0 && (
             <button
               onClick={handleToggleSelectAll}
-              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800"
-              title="Seleccionar o deseleccionar todos los archivos visibles"
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer"
             >
               {isAllSelected ? (
-                <>
-                  <CheckSquare className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Deseleccionar</span>
-                </>
+                <><CheckSquare className="w-3.5 h-3.5 text-emerald-400" /><span>Deseleccionar</span></>
               ) : (
-                <>
-                  <Square className="w-3.5 h-3.5" />
-                  <span>Seleccionar todo</span>
-                </>
+                <><Square className="w-3.5 h-3.5" /><span>Seleccionar todo</span></>
               )}
             </button>
           )}
-        </div>
 
-        <div className="flex items-center bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-              viewMode === 'grid'
-                ? 'bg-zinc-800 text-white shadow-xs'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-            title="Cuadrícula"
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-              viewMode === 'list'
-                ? 'bg-zinc-800 text-white shadow-xs'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-            title="Lista"
-          >
-            <List className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center bg-zinc-900 p-0.5 rounded-lg border border-zinc-800">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                viewMode === 'grid' ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-zinc-300'
+              }`}
+              title="Cuadrícula"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                viewMode === 'list' ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-zinc-300'
+              }`}
+              title="Lista"
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

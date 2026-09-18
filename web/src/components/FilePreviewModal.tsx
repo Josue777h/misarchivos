@@ -8,7 +8,9 @@ import {
   isImageFile,
   isTextOrCodeFile,
   safeCopyText,
+  sanitizeStorageKey,
 } from '../lib/file-helpers';
+import { supabase } from '../lib/supabase';
 import { FileIconBadge } from './FileIconBadge';
 import {
   X,
@@ -21,16 +23,29 @@ import {
   Loader2,
   Copy,
   Check,
-  FileCode,
-  HardDrive,
-  Calendar,
-  FolderTree,
-  ShieldCheck,
   FileSpreadsheet,
   AlertCircle,
 } from 'lucide-react';
 import { renderAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
+
+/** Download a file from Supabase Storage using the SDK (avoids CORS on direct fetch) */
+async function downloadFromSupabase(userId: string | undefined, relativePath: string): Promise<ArrayBuffer | null> {
+  if (!supabase) return null;
+  try {
+    const cleanKey = sanitizeStorageKey(relativePath);
+    const storagePath = userId ? `${userId}/${cleanKey}` : cleanKey;
+    const { data, error } = await supabase.storage.from('misarchivos').download(storagePath);
+    if (error || !data) {
+      console.warn('Supabase download error:', error);
+      return null;
+    }
+    return await data.arrayBuffer();
+  } catch (err) {
+    console.error('downloadFromSupabase error:', err);
+    return null;
+  }
+}
 
 export function FilePreviewModal() {
   const { previewFile, setPreviewFile, setInfoFile, moveToTrash } = useFiles();
@@ -55,7 +70,7 @@ export function FilePreviewModal() {
   const isDocx = ext === 'docx';
   const isExcel = ['xlsx', 'xls', 'csv'].includes(ext) || previewFile?.type === 'excel';
 
-  // Fetch text/code file content directly for instant in-app inspection
+  // Fetch text/code file content via Supabase SDK (avoids CORS on direct fetch)
   useEffect(() => {
     if (!previewFile) {
       setTextContent(null);
@@ -64,20 +79,25 @@ export function FilePreviewModal() {
     }
 
     setImageError(false);
-    const contentUrl = previewFile.downloadUrl || previewFile.thumbnailUrl;
 
-    if (isTextOrCode && contentUrl) {
+    if (isTextOrCode) {
       setLoadingText(true);
-      fetch(contentUrl)
-        .then((res) => {
-          if (!res.ok) throw new Error('Fetch failed');
-          return res.text();
-        })
-        .then((txt) => {
-          setTextContent(txt);
+      downloadFromSupabase(previewFile.userId, previewFile.relativePath || previewFile.name)
+        .then((buffer) => {
+          if (!buffer) throw new Error('No buffer');
+          const decoder = new TextDecoder('utf-8');
+          setTextContent(decoder.decode(buffer));
         })
         .catch(() => {
-          setTextContent(null);
+          // Fallback: try direct URL
+          const url = previewFile.downloadUrl || previewFile.thumbnailUrl;
+          if (!url) { setTextContent(null); setLoadingText(false); return; }
+          fetch(url)
+            .then((r) => r.ok ? r.text() : Promise.reject())
+            .then((t) => setTextContent(t))
+            .catch(() => setTextContent(null))
+            .finally(() => setLoadingText(false));
+          return;
         })
         .finally(() => {
           setLoadingText(false);
@@ -97,21 +117,12 @@ export function FilePreviewModal() {
       return;
     }
 
-    const contentUrl = previewFile.downloadUrl || previewFile.thumbnailUrl;
-    if (!contentUrl) {
-      setOfficeLoading(false);
-      return;
-    }
-
     if (isDocx) {
       setOfficeLoading(true);
       setOfficeError(null);
-      fetch(contentUrl)
-        .then((res) => {
-          if (!res.ok) throw new Error('Error al descargar el archivo Word');
-          return res.arrayBuffer();
-        })
+      downloadFromSupabase(previewFile.userId, previewFile.relativePath || previewFile.name)
         .then(async (arrayBuffer) => {
+          if (!arrayBuffer) throw new Error('No se pudo descargar el archivo Word');
           if (docxContainerRef.current) {
             docxContainerRef.current.innerHTML = '';
             await renderAsync(arrayBuffer, docxContainerRef.current, undefined, {
@@ -133,12 +144,9 @@ export function FilePreviewModal() {
     } else if (isExcel) {
       setOfficeLoading(true);
       setOfficeError(null);
-      fetch(contentUrl)
-        .then((res) => {
-          if (!res.ok) throw new Error('Error al descargar la hoja de cálculo');
-          return res.arrayBuffer();
-        })
+      downloadFromSupabase(previewFile.userId, previewFile.relativePath || previewFile.name)
         .then((arrayBuffer) => {
+          if (!arrayBuffer) throw new Error('No se pudo descargar el archivo Excel');
           const workbook = XLSX.read(arrayBuffer, { type: 'array' });
           const sheets = workbook.SheetNames.map((name) => {
             const worksheet = workbook.Sheets[name];
